@@ -33,13 +33,15 @@ vblankwait2:
   BIT PPUSTATUS
   BPL vblankwait2
 
-  LDA #$80
+  LDA #$36
   STA player_x
-  LDA #$a0
+  LDA #$30
   STA player_y
+  LDA #%01
+  STA color
 
   JMP main
 .endproc
 
 .segment "ZEROPAGE"
-.importzp player_x, player_y
+.importzp player_x, player_y, color

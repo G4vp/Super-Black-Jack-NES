@@ -62,7 +62,7 @@
     STA PPUADDR
     LDA #$c2
     STA PPUADDR
-    LDA #%01000000
+    LDA #%00000000
     STA PPUDATA
 
     LDA PPUSTATUS
@@ -70,7 +70,7 @@
     STA PPUADDR
     LDA #$e0
     STA PPUADDR
-    LDA #%00001100
+    LDA #%00000000
     STA PPUDATA
 
   vblankwait:       ; wait for another vblank before continuing
@@ -86,7 +86,7 @@
     JMP forever
 .endproc
 
-.proc draw_player
+.proc draw_card
   
   LDA counter_dealer
   STA dealer_index
@@ -100,21 +100,21 @@
 
     LDX dealer_index
 
-    ; write player ship tile numbers
+    ; Number Tile
     LDA player_y
     STA $0200, X
     INX
     LDA #$05
     STA $0200, X
     INX
-    LDA #$00
+    LDA color
     STA $0200, X
     INX
     LDA player_x
     STA $0200, X
 
 
-    ; top right tile (x + 8):
+    ; Bottom Tile (Y + 8):
     INX
     LDA player_y
     CLC
@@ -124,7 +124,7 @@
     LDA #$11
     STA $0200, X
     INX
-    LDA #$00
+    LDA color
     STA $0200, X
     INX
     LDA player_x
@@ -135,7 +135,7 @@
     INX
     STX counter_dealer
 
-  convert_xy_coords_to_nt:
+  convert_xy_coords_to_nt: 
     LDA #%00001000 ; base value for $2000 (change lower 2 bits for other NTs)
     STA high_byte
     LDA player_y
@@ -151,97 +151,81 @@
     LSR
     ORA low_byte
     STA low_byte
-
-  load_background_tiles:
-    LDA PPUSTATUS 
-    LDA high_byte
-    STA PPUADDR
-    LDA low_byte
-    STA PPUADDR
-    LDX #$04
-    STX PPUDATA
-
-
-    LDA PPUSTATUS 
-    LDA high_byte
-    STA PPUADDR
-    LDA low_byte
-    CLC 
-    ADC #$01
-    STA PPUADDR
-    LDX #$05
-    STX PPUDATA
-
-    LDA low_byte
-    CLC 
-    ADC #$20
-    TAX
-    LDA high_byte
-    ADC #$00
-
-
-    LDA PPUSTATUS 
-    LDA low_byte
-    CLC 
-    ADC #$20
-    TAX
-    LDA high_byte
-    ADC #$00
-    STA PPUADDR
-    STX PPUADDR
-    LDX #$06
-    STX PPUDATA
-
-    LDA PPUSTATUS 
-    LDA low_byte
-    CLC 
-    ADC #$21
-    TAX
-    LDA high_byte
-    ADC #$00
-    STA PPUADDR
-    STX PPUADDR
-    LDX #$07
-    STX PPUDATA
-
-    LDA PPUSTATUS 
-    LDA low_byte
-    CLC 
-    ADC #$40
-    TAX
-    LDA high_byte
-    ADC #$00
-    STA PPUADDR
-    STX PPUADDR
-    LDX #$08
-    STX PPUDATA
-
-    LDA PPUSTATUS 
-    LDA low_byte
-    CLC 
-    ADC #$41
-    TAX
-    LDA high_byte
-    ADC #$00
-    STA PPUADDR
-    STX PPUADDR
-    LDX #$09
-    STX PPUDATA
+    JSR draw_background_card
 
   ; return to where the subroutine was called
   RTS
 .endproc
 
-.proc clear_sprites
-  LDA #$00
-  TAX 
-  loop:
-    STA $0200,X
-    INX
-    BNE loop
-  LDA #$00
-  STA counter_dealer
-  STA dealer_index
+.proc draw_background_card
+
+  LDA PPUSTATUS ; LEFT TOP
+  LDA high_byte
+  STA PPUADDR
+  LDA low_byte
+  STA PPUADDR
+  LDX #$04
+  STX PPUDATA
+
+  LDA PPUSTATUS   
+  LDA low_byte ; RIGHT TOP
+  CLC 
+  ADC #$01
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$05
+  STX PPUDATA
+
+  LDA PPUSTATUS ; LEFT CENTER (ADD $20 to low byte and if set carry add it to high byte)
+  LDA low_byte
+  CLC 
+  ADC #$20
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$06
+  STX PPUDATA
+
+  LDA PPUSTATUS ; RIGHT CENTER (ADD $21 to low byte and if carry is set add it to high byte)
+  LDA low_byte
+  CLC 
+  ADC #$21
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$07
+  STX PPUDATA
+
+  LDA PPUSTATUS ; LEFT BOTTOM (ADD $40 to low byte and if carry is set add it to high byte)
+  LDA low_byte
+  CLC 
+  ADC #$40
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$08
+  STX PPUDATA
+
+  LDA PPUSTATUS ; RIGHT BOTTOM (ADD $41 to low byte and if carry is set add it to high byte)
+  LDA low_byte
+  CLC 
+  ADC #$41
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$09
+  STX PPUDATA
 
   RTS
 .endproc
@@ -250,17 +234,23 @@
   LDA pad1
   AND #BTN_SELECT
   BEQ check_A
-  JSR clear_sprites
+  JSR reset_handler
   check_A:
     LDA pad1
     AND #BTN_A
     BEQ done_checking
 
-    LDA #$76
+    JSR draw_card
+    
+    LDA player_x
+    CLC
+    ADC #32
     STA player_x
-    LDA #$80
-    STA player_y
-    JSR draw_player
+    
+    LDA color
+    EOR #%00000001
+    STA color
+
 
   done_checking:  
     RTS
@@ -271,13 +261,13 @@
 
 .segment "RODATA"
 palettes:
-  .byte $0f, $12, $23, $27
+  .byte $0f, $0f, $30, $30
   .byte $0f, $2b, $3c, $39
   .byte $0f, $0c, $07, $13
   .byte $0f, $19, $09, $29
 
-  .byte $0f, $2d, $27, $15
-  .byte $0f, $27, $22, $23
+  .byte $0f, $0f, $30, $25
+  .byte $0f, $30, $15, $23
   .byte $0f, $26, $27, $28
   .byte $0f, $15, $16, $17
 
@@ -286,14 +276,18 @@ palettes:
 
 .segment "ZEROPAGE"
 
-player_x: .res 1
-player_y: .res 1
-tile_x: .res 1
-tile_y: .res 1
-low_byte: .res 1
-high_byte: .res 1
-pad1: .res 1
-counter_dealer: .res 1
-dealer_index: .res 1
-.exportzp player_x, player_y, pad1
+; dealer
+  player_x: .res 1
+  player_y: .res 1
+  tile_x: .res 1
+  tile_y: .res 1
+  low_byte: .res 1
+  high_byte: .res 1
+  color: .res 1
+
+
+  counter_dealer: .res 1
+  dealer_index: .res 1
+  pad1: .res 1
+.exportzp player_x, player_y, color, pad1
 
