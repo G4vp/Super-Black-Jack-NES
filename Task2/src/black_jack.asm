@@ -1,0 +1,299 @@
+.include "constants.inc"
+.include "header.inc"
+
+.segment "CODE"
+.proc irq_handler
+  RTI
+.endproc
+
+.import read_controller1
+.import reset_handler
+
+.proc nmi_handler
+  ; save registers
+  PHA
+  TXA
+  PHA
+  TYA
+  PHA
+
+  LDA #$00
+  STA OAMADDR
+  LDA #$02
+  STA OAMDMA
+
+  ; read controller
+  JSR read_controller1
+  JSR update_dealer_hand
+
+  LDA #$00
+  STA PPUSCROLL
+  STA PPUSCROLL
+
+  ; restore registers
+  PLA
+  TAY
+  PLA
+  TAX
+  PLA
+
+  RTI
+.endproc
+
+.export main
+.proc main
+
+  LDX PPUSTATUS
+  LDX #$3f
+  STX PPUADDR
+  LDX #$00
+  STX PPUADDR
+  load_palettes:
+    LDA palettes,X
+    STA PPUDATA
+    INX
+    CPX #$20
+    BNE load_palettes    
+
+  load_attribute_table:
+    ; finally, attribute table
+    LDA PPUSTATUS
+    LDA #$23
+    STA PPUADDR
+    LDA #$c2
+    STA PPUADDR
+    LDA #%01000000
+    STA PPUDATA
+
+    LDA PPUSTATUS
+    LDA #$23
+    STA PPUADDR
+    LDA #$e0
+    STA PPUADDR
+    LDA #%00001100
+    STA PPUDATA
+
+  vblankwait:       ; wait for another vblank before continuing
+    BIT PPUSTATUS
+    BPL vblankwait
+
+    LDA #%10010000  ; turn on NMIs, sprites use first pattern table
+    STA PPUCTRL
+    LDA #%00011110  ; turn on screen
+    STA PPUMASK
+
+  forever:
+    JMP forever
+.endproc
+
+.proc draw_player
+  
+  LDA counter_dealer
+  STA dealer_index
+
+  load_sprites:
+    ; Multiply 8 * counter_dealer
+    ASL dealer_index
+    ASL dealer_index
+    ASL dealer_index
+
+
+    LDX dealer_index
+
+    ; write player ship tile numbers
+    LDA player_y
+    STA $0200, X
+    INX
+    LDA #$05
+    STA $0200, X
+    INX
+    LDA #$00
+    STA $0200, X
+    INX
+    LDA player_x
+    STA $0200, X
+
+
+    ; top right tile (x + 8):
+    INX
+    LDA player_y
+    CLC
+    ADC #$08
+    STA $0200, X
+    INX
+    LDA #$11
+    STA $0200, X
+    INX
+    LDA #$00
+    STA $0200, X
+    INX
+    LDA player_x
+    STA $0200, X
+
+    ; add 1 to counter for dealer's cards
+    LDX counter_dealer 
+    INX
+    STX counter_dealer
+
+  convert_xy_coords_to_nt:
+    LDA #%00001000 ; base value for $2000 (change lower 2 bits for other NTs)
+    STA high_byte
+    LDA player_y
+    AND #%11111000
+    ASL
+    ROL high_byte
+    ASL
+    ROL high_byte
+    STA low_byte
+    LDA player_x
+    LSR
+    LSR
+    LSR
+    ORA low_byte
+    STA low_byte
+
+  load_background_tiles:
+    LDA PPUSTATUS 
+    LDA high_byte
+    STA PPUADDR
+    LDA low_byte
+    STA PPUADDR
+    LDX #$04
+    STX PPUDATA
+
+
+    LDA PPUSTATUS 
+    LDA high_byte
+    STA PPUADDR
+    LDA low_byte
+    CLC 
+    ADC #$01
+    STA PPUADDR
+    LDX #$05
+    STX PPUDATA
+
+    LDA low_byte
+    CLC 
+    ADC #$20
+    TAX
+    LDA high_byte
+    ADC #$00
+
+
+    LDA PPUSTATUS 
+    LDA low_byte
+    CLC 
+    ADC #$20
+    TAX
+    LDA high_byte
+    ADC #$00
+    STA PPUADDR
+    STX PPUADDR
+    LDX #$06
+    STX PPUDATA
+
+    LDA PPUSTATUS 
+    LDA low_byte
+    CLC 
+    ADC #$21
+    TAX
+    LDA high_byte
+    ADC #$00
+    STA PPUADDR
+    STX PPUADDR
+    LDX #$07
+    STX PPUDATA
+
+    LDA PPUSTATUS 
+    LDA low_byte
+    CLC 
+    ADC #$40
+    TAX
+    LDA high_byte
+    ADC #$00
+    STA PPUADDR
+    STX PPUADDR
+    LDX #$08
+    STX PPUDATA
+
+    LDA PPUSTATUS 
+    LDA low_byte
+    CLC 
+    ADC #$41
+    TAX
+    LDA high_byte
+    ADC #$00
+    STA PPUADDR
+    STX PPUADDR
+    LDX #$09
+    STX PPUDATA
+
+  ; return to where the subroutine was called
+  RTS
+.endproc
+
+.proc clear_sprites
+  LDA #$00
+  TAX 
+  loop:
+    STA $0200,X
+    INX
+    BNE loop
+  LDA #$00
+  STA counter_dealer
+  STA dealer_index
+
+  RTS
+.endproc
+
+.proc update_dealer_hand
+  LDA pad1
+  AND #BTN_SELECT
+  BEQ check_A
+  JSR clear_sprites
+  check_A:
+    LDA pad1
+    AND #BTN_A
+    BEQ done_checking
+
+    LDA #$76
+    STA player_x
+    LDA #$80
+    STA player_y
+    JSR draw_player
+
+  done_checking:  
+    RTS
+.endproc
+
+.segment "VECTORS"
+.addr nmi_handler, reset_handler, irq_handler
+
+.segment "RODATA"
+palettes:
+  .byte $0f, $12, $23, $27
+  .byte $0f, $2b, $3c, $39
+  .byte $0f, $0c, $07, $13
+  .byte $0f, $19, $09, $29
+
+  .byte $0f, $2d, $27, $15
+  .byte $0f, $27, $22, $23
+  .byte $0f, $26, $27, $28
+  .byte $0f, $15, $16, $17
+
+.segment "CHR"
+.incbin "background_cards.chr"
+
+.segment "ZEROPAGE"
+
+player_x: .res 1
+player_y: .res 1
+tile_x: .res 1
+tile_y: .res 1
+low_byte: .res 1
+high_byte: .res 1
+pad1: .res 1
+counter_dealer: .res 1
+dealer_index: .res 1
+.exportzp player_x, player_y, pad1
+
