@@ -87,13 +87,10 @@
 .endproc
 
   ; Draw card: display a card on the screen with its sprites and background.
-  ; Receives X, Y, Color (00 or 01), Card Rank (number), and Card Suit (symbol).
+  ; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
 .proc draw_card
   LDA player_x
   STA current_x
-
-  LDA counter_dealer
-  STA dealer_index
 
   LDA card_rank
   CLC
@@ -105,7 +102,7 @@
   ADC #$11
   STA card_set
 
-  LDA color
+  LDA card_color
   BEQ color_is_zero
   JMP load_sprites
 
@@ -117,13 +114,12 @@
   
 
   load_sprites:
-    ; Multiply 8 * counter_dealer
-    ASL dealer_index
-    ASL dealer_index
-    ASL dealer_index
-
-
-    LDX dealer_index
+    ; Multiply 8 * counter_cards
+    LDA counter_cards
+    ASL A
+    ASL A
+    ASL A
+    TAX
 
     ; Number Tile
     LDA player_y
@@ -132,7 +128,7 @@
     LDA card_rank
     STA $0200, X
     INX
-    LDA color
+    LDA card_color
     STA $0200, X
     INX
     LDA current_x
@@ -149,16 +145,16 @@
     LDA card_set
     STA $0200, X
     INX
-    LDA color
+    LDA card_color
     STA $0200, X
     INX
     LDA current_x
     STA $0200, X
 
-    ; add 1 to counter for dealer's cards
-    LDX counter_dealer 
+    ; add 1 to counter
+    LDX counter_cards 
     INX
-    STX counter_dealer
+    STX counter_cards
 
   convert_xy_coords_to_nt: 
 
@@ -285,10 +281,10 @@
     ADC #32
     STA player_x
     
-    ; Change color from 00 to 01. Change color from 01 to 00.
-    LDA color
+    ; Change card_color from 00 to 01. Change card_color from 01 to 00.
+    LDA card_color
     EOR #%00000001
-    STA color
+    STA card_color
 
 
   done_checking:  
@@ -319,18 +315,16 @@ palettes:
   player_x: .res 1
   current_x: .res 1
   player_y: .res 1
-  tile_x: .res 1
-  tile_y: .res 1
 
   low_byte: .res 1
   high_byte: .res 1
   card_rank: .res 1
   card_set: .res 1
 
-  color: .res 1
+  card_color: .res 1
 
-  counter_dealer: .res 1
-  dealer_index: .res 1
+  counter_cards: .res 1
+  dealer_counter_cards: .res 1
   pad1: .res 1
-.exportzp player_x, player_y, color, pad1
+.exportzp player_x, player_y, card_color, pad1
 
