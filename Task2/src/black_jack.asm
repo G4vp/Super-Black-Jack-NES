@@ -87,9 +87,32 @@
 .endproc
 
 .proc draw_card
-  
+  LDA player_x
+  STA current_x
+
   LDA counter_dealer
   STA dealer_index
+
+  LDA card_rank
+  CLC
+  ADC #$03
+  STA card_rank
+
+  LDA card_set
+  CLC
+  ADC #$11
+  STA card_set
+
+  LDA color
+  BEQ color_is_zero
+  JMP load_sprites
+
+  color_is_zero:
+  LDA current_x
+  CLC
+  SBC #03
+  STA current_x
+  
 
   load_sprites:
     ; Multiply 8 * counter_dealer
@@ -104,13 +127,13 @@
     LDA player_y
     STA $0200, X
     INX
-    LDA #$05
+    LDA card_rank
     STA $0200, X
     INX
     LDA color
     STA $0200, X
     INX
-    LDA player_x
+    LDA current_x
     STA $0200, X
 
 
@@ -121,13 +144,13 @@
     ADC #$08
     STA $0200, X
     INX
-    LDA #$11
+    LDA card_set
     STA $0200, X
     INX
     LDA color
     STA $0200, X
     INX
-    LDA player_x
+    LDA current_x
     STA $0200, X
 
     ; add 1 to counter for dealer's cards
@@ -136,6 +159,12 @@
     STX counter_dealer
 
   convert_xy_coords_to_nt: 
+
+  ; X: XXXXX***
+  ; Y: YYYYY***
+  ; NT address: 0010NNYY YYYXXXXX
+
+  ; All you have to do is a little bit shifting, ANDing and ORing to get the bits where they need to be.
     LDA #%00001000 ; base value for $2000 (change lower 2 bits for other NTs)
     STA high_byte
     LDA player_y
@@ -240,13 +269,21 @@
     AND #BTN_A
     BEQ done_checking
 
+    ; Set arguments for cards.
+    LDA #$0A    
+    STA card_rank
+    LDA #$00
+    STA card_set
+
     JSR draw_card
     
+    ; Set X to the next position.
     LDA player_x
     CLC
     ADC #32
     STA player_x
     
+    ; Change color from 00 to 01. Change color from 01 to 00.
     LDA color
     EOR #%00000001
     STA color
@@ -266,8 +303,8 @@ palettes:
   .byte $0f, $0c, $07, $13
   .byte $0f, $19, $09, $29
 
-  .byte $0f, $0f, $30, $25
   .byte $0f, $30, $15, $23
+  .byte $0f, $0f, $30, $25
   .byte $0f, $26, $27, $28
   .byte $0f, $15, $16, $17
 
@@ -276,15 +313,19 @@ palettes:
 
 .segment "ZEROPAGE"
 
-; dealer
+  ; dealer
   player_x: .res 1
+  current_x: .res 1
   player_y: .res 1
   tile_x: .res 1
   tile_y: .res 1
+
   low_byte: .res 1
   high_byte: .res 1
-  color: .res 1
+  card_rank: .res 1
+  card_set: .res 1
 
+  color: .res 1
 
   counter_dealer: .res 1
   dealer_index: .res 1
