@@ -89,7 +89,7 @@
   ; Draw card: display a card on the screen with its sprites and background.
   ; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
 .proc draw_card
-  LDA player_x
+  LDA card_x
   STA current_x
 
   LDA card_rank
@@ -122,7 +122,7 @@
     TAX
 
     ; Number Tile
-    LDA player_y
+    LDA card_y
     STA $0200, X
     INX
     LDA card_rank
@@ -137,7 +137,7 @@
 
     ; Bottom Tile (Y + 8):
     INX
-    LDA player_y
+    LDA card_y
     CLC
     ADC #$08
     STA $0200, X
@@ -165,14 +165,14 @@
   ; All you have to do is a little bit shifting, ANDing and ORing to get the bits where they need to be.
     LDA #%00001000 ; base value for $2000 (change lower 2 bits for other NTs)
     STA high_byte
-    LDA player_y
+    LDA card_y
     AND #%11111000
     ASL
     ROL high_byte
     ASL
     ROL high_byte
     STA low_byte
-    LDA player_x
+    LDA card_x
     LSR
     LSR
     LSR
@@ -261,10 +261,70 @@
   LDA pad1
   AND #BTN_SELECT
   BEQ check_A
+  LDA #$00
+  STA dealer_counter_cards
+  STA counter_cards
   JSR reset_handler
+
   check_A:
     LDA pad1
     AND #BTN_A
+    BEQ check_B
+
+    LDA dealer_counter_cards
+    CMP #$0C
+    BEQ check_B
+
+    ; Set arguments for cards.
+    LDA #$0A    
+    STA card_rank
+    LDA #$00
+    STA card_set
+
+    LDA dealer_x
+    STA card_x
+    LDA dealer_y
+    STA card_y
+
+    JSR draw_card
+    
+    ; Set X to the next position.
+    LDA dealer_x
+    CLC
+    ADC #32
+    STA dealer_x
+
+    ; If the horizontal line reaches its maximum, then draw on the next line.
+    LDA dealer_counter_cards ;if dealer_counter_cards > 5
+    CMP #$05
+    BEQ  dealer_next_line
+    JMP continue
+
+    dealer_next_line:
+      LDA #$36 
+      STA dealer_x
+      LDA #$50
+      STA dealer_y
+
+    continue: 
+    
+      ; Change card_color from 00 to 01. Change card_color from 01 to 00.
+      LDA card_color
+      EOR #%00000001
+      STA card_color
+
+      ; Increment dealers counter cards
+      LDX dealer_counter_cards
+      INX
+      STX dealer_counter_cards
+  check_B:
+    LDA pad1
+    AND #BTN_B
+    BEQ done_checking
+
+    ; Set MAX cards for players
+    LDA player_counter_cards
+    CMP #$0E ; 14
     BEQ done_checking
 
     ; Set arguments for cards.
@@ -273,19 +333,43 @@
     LDA #$00
     STA card_set
 
+    ; Set X Y for player's card
+    LDA player_x
+    STA card_x
+    LDA player_y
+    STA card_y
+
     JSR draw_card
-    
+      
     ; Set X to the next position.
     LDA player_x
     CLC
     ADC #32
     STA player_x
-    
-    ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-    LDA card_color
-    EOR #%00000001
-    STA card_color
 
+    ; If the horizontal line reaches its maximum, then draw on the next line.
+    LDA player_counter_cards
+    CMP #$06
+    BEQ  player_next_line; 
+    JMP player_continue
+
+    player_next_line:
+      LDA #$16
+      STA player_x
+      LDA #$B0
+      STA player_y
+
+    player_continue: 
+    
+      ; Change card_color from 00 to 01. Change card_color from 01 to 00.
+      LDA card_color
+      EOR #%00000001
+      STA card_color
+
+      ; Increment player counter cards
+      LDX player_counter_cards
+      INX
+      STX player_counter_cards
 
   done_checking:  
     RTS
@@ -312,8 +396,14 @@ palettes:
 .segment "ZEROPAGE"
 
   ; dealer
-  player_x: .res 1
+  card_x: .res 1
   current_x: .res 1
+  card_y: .res 1
+
+  dealer_x: .res 1
+  dealer_y: .res 1
+
+  player_x: .res 1
   player_y: .res 1
 
   low_byte: .res 1
@@ -325,6 +415,7 @@ palettes:
 
   counter_cards: .res 1
   dealer_counter_cards: .res 1
+  player_counter_cards: .res 1
   pad1: .res 1
-.exportzp player_x, player_y, card_color, pad1
+.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y
 

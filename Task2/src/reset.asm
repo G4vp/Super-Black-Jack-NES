@@ -34,14 +34,20 @@ vblankwait2:
   BPL vblankwait2
 
   LDA #$36
-  STA player_x
+  STA dealer_x
   LDA #$30
+  STA dealer_y
+
+  LDA #$16
+  STA player_x
+  LDA #$90
   STA player_y
+
   LDA #%01
-  STA color
+  STA card_color
 
   JMP main
 .endproc
 
 .segment "ZEROPAGE"
-.importzp player_x, player_y, color
+.importzp card_color, player_x, player_y, dealer_x, dealer_y
