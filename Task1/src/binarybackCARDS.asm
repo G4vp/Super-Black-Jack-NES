@@ -1,172 +1,4 @@
-.include "constants.inc"
-.include "header.inc"
-
-
-.segment "CODE"
-.proc irq_handler
-  RTI
-.endproc
-
-.proc nmi_handler
-  LDA #$00
-  STA OAMADDR
-  LDA #$02
-  STA OAMDMA
-	LDA #$00
-	STA $2005
-	STA $2005
-  RTI
-.endproc
-
-.import reset_handler
-
-.export main
-.proc main
-  ; write a palette
-  LDX PPUSTATUS
-  LDX #$3f
-  STX PPUADDR
-  LDX #$00
-  STX PPUADDR
-  LDA #$29
-  STA PPUDATA
-  LDA #$19
-  STA PPUDATA
-  LDA #$09
-  STA PPUDATA
-  LDA #$0f
-  STA PPUDATA
-
-
-load_palettes:
-  LDA palettes,X
-  STA PPUDATA
-  INX
-  CPX #$20
-  BNE load_palettes
-
-
-JSR load_background_graphics ;;CALLING THE SUBROUTINE
-
-  ; write sprite data
-  LDX #$00
-; load_sprites: ; 
-;   LDA sprites,X
-;   STA $0200,X
-;   INX
-;   CPX #$C0
-;   BNE load_sprites
-
-
-	; finally, attribute table
-	LDA PPUSTATUS
-	LDA #$23
-	STA PPUADDR
-	LDA #$c2
-	STA PPUADDR
-	LDA #%11111111
-	STA PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$23
-	STA PPUADDR
-	LDA #$e0
-	STA PPUADDR
-	LDA #%11111111
-	STA PPUDATA
-
-
-
-vblankwait:       ; wait for another vblank before continuing
-  BIT PPUSTATUS
-  BPL vblankwait
-
-  LDA #%10010000  ; turn on NMIs, sprites use first pattern table
-  STA PPUCTRL
-  LDA #%00011110  ; turn on screen
-  STA PPUMASK
-
-  
-forever:
-  JMP forever
-.endproc
-
-;.export load_background_graphics
-.proc load_background_graphics
-
-	load_background:
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$00
-	STA PPUADDR
-	LDX #$00
-
-	Loop1: 
-	LDA background, X   ;starts at Zero, and loads the first element
-	STA PPUDATA       
-	INX					; increses x
-	CPX #$FF
-	BNE Loop1
-
-	Loop2: 
-	LDA background1, X   
-	STA PPUDATA      
-	INX
-	CPX #$FF
-	BNE Loop2
-
-	Loop3: 
-	LDA background2, X  
-	STA PPUDATA       
-	INX
-	CPX #$FF
-	BNE Loop3
-
-	Loop4: 
-	LDA background3, X   
-	STA PPUDATA       
-	INX
-	CPX #$FF
-	BNE Loop4
-
-	LDX #$00
-
-	RTS
-
-.endproc
-
-; .proc draw_sprite_cards:
-
-; RTS
-; .endproc
-
-
-.segment "VECTORS"
-.addr nmi_handler, reset_handler, irq_handler
-
-.segment "RODATA"
-palettes: ;check if this is right
-.byte $19, $0f, $21, $32
-.byte $19, $0f, $21, $32
-.byte $19, $0f, $21, $32
-.byte $19, $0f, $21, $32
-
-.byte $19, $0f, $21, $32
-.byte $19, $0f, $21, $32
-.byte $19, $0f, $21, $32
-.byte $19, $0f, $21, $32
-
-; sprites: 
-; .byte $70, $21, $00, $80
-; .byte $70, $22, $00, $88
-; .byte $78, $31, $00, $80
-; .byte $78, $32, $00, $88
-; .byte $80, $41, $00, $80
-; .byte $80, $42, $00, $88
-
-
-background:
+binarybackCARDS:
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 	.byte $00,$00,$23,$16,$2e,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
@@ -184,7 +16,6 @@ background:
 	.byte $00,$00,$12,$44,$45,$00,$00,$00,$00,$41,$00,$00,$00,$00,$00,$00
 	.byte $42,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
 
-background1:
 	.byte $00,$00,$12,$00,$00,$00,$00,$04,$05,$00,$04,$05,$00,$00,$00,$00
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
 	.byte $00,$00,$12,$00,$00,$00,$00,$06,$07,$00,$06,$07,$00,$00,$00,$00
@@ -202,7 +33,6 @@ background1:
 	.byte $00,$00,$23,$1f,$14,$2c,$18,$25,$2e,$00,$00,$00,$00,$00,$00,$00
 	.byte $00,$00,$00,$00,$15,$1c,$17,$2e,$2f,$00,$00,$00,$00,$00,$00,$00
 
-background2:
 	.byte $00,$00,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10
 	.byte $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$00,$00
 	.byte $00,$00,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
@@ -220,7 +50,6 @@ background2:
 	.byte $00,$00,$12,$00,$00,$00,$00,$06,$07,$00,$06,$07,$00,$00,$00,$00
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
 
-background3:
 	.byte $00,$00,$12,$00,$00,$00,$00,$08,$09,$00,$08,$09,$00,$00,$00,$00
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
 	.byte $00,$00,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
@@ -238,8 +67,3 @@ background3:
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
-
-
-
-.segment "CHR"
-.incbin "background_cards2.chr" ;cambiar con todo los sprites correctos
