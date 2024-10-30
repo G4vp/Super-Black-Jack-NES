@@ -86,6 +86,8 @@
     JMP forever
 .endproc
 
+  ; Draw card: display a card on the screen with its sprites and background.
+  ; Receives X, Y, Color (00 or 01), Card Rank (number), and Card Suit (symbol).
 .proc draw_card
   LDA player_x
   STA current_x
