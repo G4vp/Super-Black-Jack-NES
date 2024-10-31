@@ -35,10 +35,7 @@ set_counters:
   STA player_counter_cards
   STA counter_cards
 
-vblankwait2:
-  BIT PPUSTATUS
-  BPL vblankwait2
-
+set_card_coords:
   LDA #$3E
   STA dealer_x
   LDA #$20
@@ -49,6 +46,17 @@ vblankwait2:
   LDA #$90
   STA player_y
 
+set_numbers:
+    LDA #$00
+    STA rank_number
+    STA set_number
+
+
+vblankwait2:
+  BIT PPUSTATUS
+  BPL vblankwait2
+
+
   LDA #%01
   STA card_color
 
@@ -56,4 +64,4 @@ vblankwait2:
 .endproc
 
 .segment "ZEROPAGE"
-.importzp card_color, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards
+.importzp card_color, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards, rank_number, set_number
