@@ -33,7 +33,10 @@ set_counters:
   LDA #$00
   STA dealer_counter_cards
   STA player_counter_cards
-  STA counter_cards
+
+  ; We start sprite_counter at 3 because the first 12 bytes are reserved for the bid numbers.
+  LDA #$03
+  STA sprite_counter
 
 set_card_coords:
   LDA #$3E
@@ -64,4 +67,4 @@ vblankwait2:
 .endproc
 
 .segment "ZEROPAGE"
-.importzp card_color, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
+.importzp card_color, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter

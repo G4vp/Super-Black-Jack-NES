@@ -56,6 +56,16 @@
     BNE load_palettes    
 
   JSR load_background_graphics
+
+  LDA #$1F
+  STA bid_first_sprite
+  STA bid_second_sprite
+  STA bid_third_sprite
+  JSR load_bid_sprites
+
+  LDA #$00
+  STA prev_controls
+  
   load_attribute_table:
     LDA PPUSTATUS
     LDA #$23
@@ -115,8 +125,8 @@
   
 
   load_sprites:
-    ; Multiply 8 * counter_cards
-    LDA counter_cards
+    ; Multiply 8 * sprite_counter
+    LDA sprite_counter
     ASL A
     ASL A
     ASL A
@@ -153,9 +163,9 @@
     STA $0200, X
 
     ; add 1 to counter
-    LDX counter_cards 
+    LDX sprite_counter 
     INX
-    STX counter_cards
+    STX sprite_counter
 
   convert_xy_coords_to_nt: 
 
@@ -259,12 +269,17 @@
 .endproc
 
 .proc update_hands
+
   LDA pad1
   AND #BTN_SELECT
   BEQ check_A
   JSR reset_handler
 
   check_A:
+    LDA pad1
+    CMP prev_controls
+    BEQ check_B
+
     LDA pad1
     AND #BTN_A
     BEQ check_B
@@ -319,13 +334,17 @@
     JMP change_card_info
   check_B:
     LDA pad1
+    CMP prev_controls
+    BEQ check_UP
+
+    LDA pad1
     AND #BTN_B
-    BEQ done_checking
+    BEQ check_UP
 
     ; Set MAX cards for players
     LDA player_counter_cards
     CMP #$0E ; 14
-    BEQ done_checking
+    BEQ check_UP
 
     ; Set arguments for cards.
     LDA rank_counter    
@@ -371,7 +390,23 @@
       INX
       STX player_counter_cards
     JMP change_card_info
+  check_UP:
+    LDA pad1
+    CMP prev_controls
+    BEQ done_checking
 
+    LDA pad1
+    AND #BTN_UP
+    BEQ done_checking
+
+    LDA #$16
+    STA bid_first_sprite
+    STA bid_second_sprite
+    STA bid_third_sprite
+
+    JSR load_bid_sprites
+
+    JMP change_card_info
   ; Change the card's suit and number after input
   change_card_info:
     LDX suit_counter
@@ -380,7 +415,7 @@
     LDA suit_counter
     CMP #$04
     BEQ reg_was_4
-    JMP continue_reg_gt_4
+    JMP done_checking
 
     reg_was_4:
       LDA #$00
@@ -389,9 +424,9 @@
       INX
       STX rank_counter
 
-    continue_reg_gt_4:
-
   done_checking:  
+    LDA pad1
+    STA prev_controls
 
   RTS
 .endproc
@@ -440,6 +475,38 @@
 
 .endproc
 
+.proc load_bid_sprites
+  ; Assign first 12 bytes of OAM to the bid sprites.
+  LDA #$76
+  STA $0200
+  LDA bid_first_sprite
+  STA $0201
+  LDA #$00
+  STA $0202
+  LDA #$D8
+  STA $0203
+
+  LDA #$76
+  STA $0204
+  LDA bid_second_sprite
+  STA $0205
+  LDA #$00
+  STA $0206
+  LDA #$D0
+  STA $0207
+
+  LDA #$76
+  STA $0208
+  LDA bid_third_sprite
+  STA $0209
+  LDA #$00
+  STA $020A
+  LDA #$C8
+  STA $020B
+  RTS
+.endproc
+
+
 .segment "VECTORS"
 .addr nmi_handler, reset_handler, irq_handler
 
@@ -448,7 +515,7 @@
 
 .segment "ZEROPAGE"
 
-  ; dealer
+  ; Card
   offset_x: .res 1
   card_x: .res 1
   card_y: .res 1
@@ -464,16 +531,28 @@
   card_rank: .res 1
   card_set: .res 1
   
+  card_color: .res 1
+  
+  ; Counters
   rank_counter: .res 1
   suit_counter: .res 1
-
-  card_color: .res 1
-
-  counter_cards: .res 1
   dealer_counter_cards: .res 1
   player_counter_cards: .res 1
+  sprite_counter: .res 1
+
+  ; Controllers
   pad1: .res 1
-.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
+  prev_controls: .res 1
+
+  ; Bid Number
+  bid_first_digit: .res 1
+  bid_second_digit: .res 1
+  big_third_digit: .res 1
+
+  bid_first_sprite: .res 1
+  bid_second_sprite: .res 1
+  bid_third_sprite: .res 1
+.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
 
 .segment "RODATA"
 palettes:
