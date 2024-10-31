@@ -343,7 +343,7 @@
     ; Set X to the next position.
     LDA player_x
     CLC
-    ADC #32
+    ADC #24
     STA player_x
 
     ; If the horizontal line reaches its maximum, then draw on the next line.
@@ -353,7 +353,7 @@
     JMP player_continue
 
     player_next_line:
-      LDA #$16
+      LDA #$26
       STA player_x
       LDA #$B0
       STA player_y

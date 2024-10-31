@@ -44,7 +44,7 @@ vblankwait2:
   LDA #$20
   STA dealer_y
 
-  LDA #$16
+  LDA #$26
   STA player_x
   LDA #$90
   STA player_y
