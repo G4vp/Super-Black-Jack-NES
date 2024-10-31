@@ -48,9 +48,9 @@ load_palettes:
   CPX #$20
   BNE load_palettes
 
-JSR draw_sprite_cards
-JSR load_background_graphics ;;CALLING THE SUBROUTINE
 
+JSR load_background_graphics ;;CALLING THE SUBROUTINE
+JSR draw_sprite_cards
 
 
 
@@ -60,7 +60,7 @@ JSR load_background_graphics ;;CALLING THE SUBROUTINE
 	; STA PPUADDR
 	; LDA #$c9
 	; STA PPUADDR
-	; LDA #%11111111
+	; LDA #%00000000
 	; STA PPUDATA
 
 	; LDA PPUSTATUS
@@ -68,7 +68,7 @@ JSR load_background_graphics ;;CALLING THE SUBROUTINE
 	; STA PPUADDR
 	; LDA #$e0
 	; STA PPUADDR
-	; LDA #%11111111
+	; LDA #%00000000
 	; STA PPUDATA
 
 
@@ -133,14 +133,13 @@ forever:
 .endproc
 
 .proc draw_sprite_cards
-LDX #$00
+ LDX #$00
 load_sprites: 
   LDA sprites,X
   STA $0200,X
   INX
-  CPX #$24
+  CPX #$C0
   BNE load_sprites
-
 
 RTS
 .endproc
@@ -158,19 +157,90 @@ palettes: ;check if this is right
 
 .byte $19, $0C, $16, $38 ;back
 .byte $19, $0C, $16, $38 ;s
-.byte $19, $16, $16, $38 ;s n
-.byte $19, $0f, $0f, $38
+.byte $19, $32, $16, $38 ;s n
+.byte $19, $0f, $32, $38
 
 sprites: 
-.byte $20, $20, $06, $39 ;blue
-.byte $40, $20, $07, $39 ;black
+;pc
+.byte $20, $0F, $06, $3A ;red
+.byte $28, $12, $06, $3A
 
-.byte $25, $2A, $06, $39
-.byte $45, $2A, $07, $39
+.byte $20, $05, $06, $52 ;red
+.byte $28, $13, $06, $52
 
-; .byte $78, $04, $05, $88
-; .byte $80, $04, $06, $80
-; .byte $80, $04, $00, $88
+.byte $20, $06, $07, $6E ;black
+.byte $28, $14, $07, $6E
+
+.byte $20, $0D, $06, $82 ;red
+.byte $28, $15, $06, $82
+
+.byte $20, $08, $07, $9E ;red
+.byte $28, $12, $07, $9E
+
+.byte $20, $09, $07, $B6 ;red
+.byte $28, $13, $07, $B6
+
+.byte $20, $0A, $07, $CE ;red
+.byte $28, $14, $07, $CE
+
+.byte $40, $0B, $07, $3E ;black
+.byte $48, $12, $07, $3E
+
+.byte $40, $0C, $06, $52 ;black
+.byte $48, $15, $06, $52
+
+;player
+.byte $90, $10, $07, $26 ;red
+.byte $98, $12, $07, $26
+
+.byte $90, $05, $06, $3A ;red
+.byte $98, $12, $06, $3A
+
+.byte $90, $11, $06, $52 ;red
+.byte $98, $14, $06, $52
+
+.byte $90, $07, $06, $6A ;red
+.byte $98, $15, $06, $6A
+
+.byte $90, $08, $06, $82 ;red
+.byte $98, $12, $06, $82
+
+.byte $90, $09, $07, $9E ;red
+.byte $98, $13, $07, $9E
+
+.byte $90, $0C, $07, $B6 ;red
+.byte $98, $15, $07, $B6
+
+.byte $90, $0B, $07, $CE ;red
+.byte $98, $14, $07, $CE
+
+.byte $B0, $0D, $07, $3E ;black
+.byte $B8, $13, $07, $3E
+
+.byte $B0, $0E, $06, $52 ;black
+.byte $B8, $12, $06, $52
+
+;CASH
+
+.byte $6E, $16, $05, $C8 ;black
+.byte $6E, $1A, $05, $D0
+.byte $6E, $1C, $05, $D8 ;black
+
+.byte $77, $1D, $05, $C8 ;black
+.byte $77, $1F, $05, $D0
+.byte $77, $1F, $05, $D8 ;black
+
+.byte $77, $16, $05, $48 ;black
+.byte $77, $1E, $05, $50
+
+.byte $08, $17, $05, $28 ;black
+.byte $08, $1D, $05, $30
+
+;WIN
+
+
+
+
 
 background:
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
@@ -248,4 +318,4 @@ background3:
 
 
 .segment "CHR"
-.incbin "background_cards3.chr" ;cambiar con todo los sprites correctos
+.incbin "background_cards2.chr" ;cambiar con todo los sprites correctos
