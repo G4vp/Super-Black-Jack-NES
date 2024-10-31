@@ -39,9 +39,9 @@ vblankwait2:
   BIT PPUSTATUS
   BPL vblankwait2
 
-  LDA #$36
+  LDA #$3E
   STA dealer_x
-  LDA #$30
+  LDA #$20
   STA dealer_y
 
   LDA #$16
