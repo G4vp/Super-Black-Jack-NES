@@ -48,8 +48,8 @@ set_card_coords:
 
 set_numbers:
     LDA #$00
-    STA rank_number
-    STA set_number
+    STA rank_counter
+    STA suit_counter
 
 
 vblankwait2:
@@ -64,4 +64,4 @@ vblankwait2:
 .endproc
 
 .segment "ZEROPAGE"
-.importzp card_color, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards, rank_number, set_number
+.importzp card_color, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter

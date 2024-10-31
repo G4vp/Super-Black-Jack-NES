@@ -275,9 +275,9 @@
     BEQ check_B
 
     ; Set arguments for cards.
-    LDA rank_number    
+    LDA rank_counter    
     STA card_rank
-    LDA set_number
+    LDA suit_counter
     STA card_set
 
     LDA dealer_x
@@ -328,9 +328,9 @@
     BEQ done_checking
 
     ; Set arguments for cards.
-    LDA rank_number    
+    LDA rank_counter    
     STA card_rank
-    LDA set_number
+    LDA suit_counter
     STA card_set
 
     ; Set X Y for player's card
@@ -371,30 +371,27 @@
       INX
       STX player_counter_cards
     JMP change_card_info
+
+  ; Change the card's suit and number after input
   change_card_info:
-    LDX set_number
+    LDX suit_counter
     INX
-    STX set_number
-    LDA set_number
-    CLC
+    STX suit_counter
+    LDA suit_counter
     CMP #$04
     BEQ reg_was_4
     JMP continue_reg_gt_4
 
     reg_was_4:
       LDA #$00
-      STA set_number
-      LDX rank_number
+      STA suit_counter
+      LDX rank_counter
       INX
-      STX rank_number
+      STX rank_counter
 
     continue_reg_gt_4:
 
   done_checking:  
-
-
-
-
 
   RTS
 .endproc
@@ -467,9 +464,8 @@
   card_rank: .res 1
   card_set: .res 1
   
-  rank_number: .res 1
-  set_number: .res 1
-
+  rank_counter: .res 1
+  suit_counter: .res 1
 
   card_color: .res 1
 
@@ -477,7 +473,7 @@
   dealer_counter_cards: .res 1
   player_counter_cards: .res 1
   pad1: .res 1
-.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards, rank_number, set_number
+.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
 
 .segment "RODATA"
 palettes:
