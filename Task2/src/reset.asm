@@ -29,6 +29,12 @@ clear_oam:
   INX
   BNE clear_oam
 
+set_counters:
+  LDA #$00
+  STA dealer_counter_cards
+  STA player_counter_cards
+  STA counter_cards
+
 vblankwait2:
   BIT PPUSTATUS
   BPL vblankwait2
@@ -50,4 +56,4 @@ vblankwait2:
 .endproc
 
 .segment "ZEROPAGE"
-.importzp card_color, player_x, player_y, dealer_x, dealer_y
+.importzp card_color, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards

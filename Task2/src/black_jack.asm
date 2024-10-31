@@ -24,7 +24,7 @@
 
   ; read controller
   JSR read_controller1
-  JSR update_dealer_hand
+  JSR update_hands
 
   LDA #$00
   STA PPUSCROLL
@@ -90,11 +90,11 @@
   ; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
 .proc draw_card
   LDA card_x
-  STA current_x
+  STA offset_x
 
   LDA card_rank
   CLC
-  ADC #$03
+  ADC #$05
   STA card_rank
 
   LDA card_set
@@ -106,11 +106,12 @@
   BEQ color_is_zero
   JMP load_sprites
 
+  ; Move the sprite 3 pixels to the left if the color changes.
   color_is_zero:
-  LDA current_x
+  LDA card_x
   CLC
   SBC #03
-  STA current_x
+  STA offset_x
   
 
   load_sprites:
@@ -131,7 +132,7 @@
     LDA card_color
     STA $0200, X
     INX
-    LDA current_x
+    LDA offset_x
     STA $0200, X
 
 
@@ -148,7 +149,7 @@
     LDA card_color
     STA $0200, X
     INX
-    LDA current_x
+    LDA offset_x
     STA $0200, X
 
     ; add 1 to counter
@@ -257,13 +258,10 @@
   RTS
 .endproc
 
-.proc update_dealer_hand
+.proc update_hands
   LDA pad1
   AND #BTN_SELECT
   BEQ check_A
-  LDA #$00
-  STA dealer_counter_cards
-  STA counter_cards
   JSR reset_handler
 
   check_A:
@@ -271,12 +269,13 @@
     AND #BTN_A
     BEQ check_B
 
+    ; Set MAX cards for players
     LDA dealer_counter_cards
     CMP #$0C
     BEQ check_B
 
     ; Set arguments for cards.
-    LDA #$0A    
+    LDA #$00    
     STA card_rank
     LDA #$00
     STA card_set
@@ -286,6 +285,7 @@
     LDA dealer_y
     STA card_y
 
+    ; Call Subroutine to draw the card
     JSR draw_card
     
     ; Set X to the next position.
@@ -298,7 +298,7 @@
     LDA dealer_counter_cards ;if dealer_counter_cards > 5
     CMP #$05
     BEQ  dealer_next_line
-    JMP continue
+    JMP dealer_continue
 
     dealer_next_line:
       LDA #$36 
@@ -306,8 +306,7 @@
       LDA #$50
       STA dealer_y
 
-    continue: 
-    
+    dealer_continue: 
       ; Change card_color from 00 to 01. Change card_color from 01 to 00.
       LDA card_color
       EOR #%00000001
@@ -370,9 +369,9 @@
       LDX player_counter_cards
       INX
       STX player_counter_cards
-
   done_checking:  
-    RTS
+
+  RTS
 .endproc
 
 .segment "VECTORS"
@@ -396,8 +395,8 @@ palettes:
 .segment "ZEROPAGE"
 
   ; dealer
+  offset_x: .res 1
   card_x: .res 1
-  current_x: .res 1
   card_y: .res 1
 
   dealer_x: .res 1
@@ -417,5 +416,5 @@ palettes:
   dealer_counter_cards: .res 1
   player_counter_cards: .res 1
   pad1: .res 1
-.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y
+.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, counter_cards, player_counter_cards, dealer_counter_cards
 
