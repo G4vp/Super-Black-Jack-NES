@@ -9,5 +9,4 @@ to develop a simplified Blackjack game where the player bets against the house t
 closer to 21 in their hand.
 
 ##  Game Made By
-Raquel Quiñones
-Gabriel Viera
+Raquel Quiñones and Gabriel Viera
