@@ -1,6 +1,8 @@
-##### University of Puerto Rico at Mayaguez
-##### CIIC 4082: Computer Architecture II
-##### Professor: Juan Felipe Patarroyo Montenegro
+University of Puerto Rico at Mayaguez
+<br>
+CIIC 4082: Computer Architecture II
+<br>
+Professor: Juan Felipe Patarroyo Montenegro
 
 # Black Jack NES
 The project aims to develop a game for the Nintendo Entertainment System (NES) console,
