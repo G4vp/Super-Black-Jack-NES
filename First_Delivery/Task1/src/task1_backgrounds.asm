@@ -514,4 +514,4 @@ background3:
   loop_counter: .res 1
 
 .segment "CHR"
-.incbin "background_cards3.chr" ;cambiar con todo los sprites correctos
+.incbin "task1_background_cards3.chr" ;cambiar con todo los sprites correctos
