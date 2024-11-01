@@ -649,7 +649,7 @@
 .addr nmi_handler, reset_handler, irq_handler
 
 .segment "CHR"
-.incbin "background_cards2.chr"
+.incbin "background_cards.chr"
 
 .segment "ZEROPAGE"
 
