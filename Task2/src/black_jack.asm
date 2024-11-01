@@ -390,23 +390,34 @@
       INX
       STX player_counter_cards
     JMP change_card_info
+
   check_UP:
+    LDA pad1
+    CMP prev_controls
+    BEQ check_DOWN
+
+    LDA pad1
+    AND #BTN_UP
+    BEQ check_DOWN
+
+    JSR add_three_digits
+    JSR load_bid_sprites
+
+    JMP done_checking
+  
+  check_DOWN:
     LDA pad1
     CMP prev_controls
     BEQ done_checking
 
     LDA pad1
-    AND #BTN_UP
+    AND #BTN_DOWN
     BEQ done_checking
 
-    LDA #$16
-    STA bid_first_sprite
-    STA bid_second_sprite
-    STA bid_third_sprite
-
+    JSR sbc_three_digits
     JSR load_bid_sprites
 
-    JMP change_card_info
+    JMP done_checking
   ; Change the card's suit and number after input
   change_card_info:
     LDX suit_counter
@@ -423,6 +434,7 @@
       LDX rank_counter
       INX
       STX rank_counter
+  
 
   done_checking:  
     LDA pad1
@@ -476,6 +488,18 @@
 .endproc
 
 .proc load_bid_sprites
+  LDX bid_first_digit
+  LDA digits, X
+  STA bid_first_sprite
+
+  LDX bid_second_digit
+  LDA digits, X
+  STA bid_second_sprite
+
+  LDX bid_third_digit
+  LDA digits, X
+  STA bid_third_sprite
+
   ; Assign first 12 bytes of OAM to the bid sprites.
   LDA #$76
   STA $0200
@@ -503,6 +527,120 @@
   STA $020A
   LDA #$C8
   STA $020B
+  RTS
+.endproc
+
+.proc add_three_digits
+
+    ; Add 5 to the leftmost digit
+    first_digit:
+      LDA bid_first_digit
+      CLC
+      ADC #$05
+      STA bid_first_digit
+
+      LDA bid_first_digit
+      CMP #$0A   ; bid_first_digit >= 10
+      BEQ first_gt_10
+      BCS first_gt_10
+      JMP done
+
+      first_gt_10:
+        LDA #$00
+        STA bid_first_digit
+
+    second_digit:
+      LDX bid_second_digit
+      INX
+      STX bid_second_digit
+      
+      LDA bid_second_digit
+      CMP #$0A   ; bid_first_digit >= 10
+      BEQ second_gt_10
+      BCS second_gt_10
+      JMP done
+
+      second_gt_10:
+        LDA #$00
+        STA bid_second_digit
+
+    third_digit:
+      LDX bid_third_digit
+      INX
+      STX bid_third_digit
+      
+      LDA bid_third_digit
+      CMP #$0A   ; bid_first_digit >= 10
+      BEQ third_gt_10
+      BCS third_gt_10
+      JMP done
+
+      third_gt_10:
+        LDA #$00
+        STA bid_third_digit
+
+    done:
+  RTS
+.endproc
+
+.proc sbc_three_digits
+
+    ; Check if the digits are all zero before any action
+    a_is_zero:
+      LDA bid_first_digit
+      BEQ b_is_zero
+      JMP first_digit
+    b_is_zero:
+      LDA bid_second_digit
+      BEQ c_is_zero
+      JMP first_digit
+    c_is_zero:
+      LDA bid_third_digit
+      BEQ done
+      JMP first_digit
+
+
+    first_digit:
+      LDA bid_first_digit
+      BEQ first_is_zero
+
+      LDA #$00
+      STA bid_first_digit
+      JMP done
+
+      first_is_zero:
+        LDA #$05
+        STA bid_first_digit
+
+    second_digit:
+      LDX bid_second_digit
+      DEX
+      STX bid_second_digit
+
+      LDA bid_second_digit
+      CMP #$FF
+      BEQ second_is_zero
+      JMP done
+
+      second_is_zero:
+        LDA #$09
+        STA bid_second_digit
+
+    third_digit:
+      LDX bid_third_digit
+      DEX
+      STX bid_third_digit
+
+      ; LDA bid_third_digit
+      ; CMP #$FF
+      ; BEQ third_is_zero
+      ; JMP done
+
+      ; third_is_zero:
+      ;   LDA #$09
+      ;   STA bid_third_digit
+
+    done:
   RTS
 .endproc
 
@@ -547,7 +685,7 @@
   ; Bid Number
   bid_first_digit: .res 1
   bid_second_digit: .res 1
-  big_third_digit: .res 1
+  bid_third_digit: .res 1
 
   bid_first_sprite: .res 1
   bid_second_sprite: .res 1
@@ -555,6 +693,8 @@
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
 
 .segment "RODATA"
+digits:
+  .byte $1F, $16, $17, $18, $19, $1A, $1B, $1C, $1D, $1E
 palettes:
   .byte $19, $0f, $21, $32
   .byte $19, $0f, $21, $32
