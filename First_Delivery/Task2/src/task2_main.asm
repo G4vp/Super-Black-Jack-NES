@@ -295,6 +295,7 @@
     LDA suit_counter
     STA card_set
 
+    ; Set Card Position
     LDA dealer_x
     STA card_x
     LDA dealer_y
@@ -379,7 +380,6 @@
       STA player_y
 
     player_continue: 
-    
       ; Change card_color from 00 to 01. Change card_color from 01 to 00.
       LDA card_color
       EOR #%00000001
@@ -418,6 +418,7 @@
     JSR load_bid_sprites
 
     JMP done_checking
+
   ; Change the card's suit and number after input
   change_card_info:
     LDX suit_counter
@@ -428,6 +429,7 @@
     BEQ reg_was_4
     JMP done_checking
 
+    ; After all suits for a number were shown, we change the rank and reset the suit counter.
     reg_was_4:
       LDA #$00
       STA suit_counter
@@ -555,7 +557,7 @@
       STX bid_second_digit
       
       LDA bid_second_digit
-      CMP #$0A   ; bid_first_digit >= 10
+      CMP #$0A   ; bid_second_digit >= 10
       BEQ second_gt_10
       BCS second_gt_10
       JMP done
@@ -570,7 +572,7 @@
       STX bid_third_digit
       
       LDA bid_third_digit
-      CMP #$0A   ; bid_first_digit >= 10
+      CMP #$0A   ; bid_third_digit >= 10
       BEQ third_gt_10
       BCS third_gt_10
       JMP done
