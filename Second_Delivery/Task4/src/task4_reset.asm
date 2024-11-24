@@ -34,8 +34,8 @@ set_counters:
   STA dealer_counter_cards
   STA player_counter_cards
 
-  ; We start sprite_counter at 3 because the first 12 bytes are reserved for the bid numbers.
-  LDA #$03
+  ; We start sprite_counter at 6 because the first 24 bytes are reserved for the numbers.
+  LDA #$06
   STA sprite_counter
 
 set_card_coords:

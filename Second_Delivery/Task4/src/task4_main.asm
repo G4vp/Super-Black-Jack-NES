@@ -57,11 +57,16 @@
 
   JSR load_background_graphics
 
-  LDA #$1F
-  STA bid_first_sprite
-  STA bid_second_sprite
-  STA bid_third_sprite
   JSR load_bid_sprites
+
+  LDA #$00
+  STA cash_first_digit
+  LDA #$02
+  STA cash_second_digit
+  LDA #$01
+  STA cash_third_digit
+  JSR load_cash_sprites
+
 
   LDA #$00
   STA prev_controls
@@ -125,9 +130,8 @@
   
 
   load_sprites:
-    ; Multiply 8 * sprite_counter
+    ; Multiply 4 * sprite_counter
     LDA sprite_counter
-    ASL A
     ASL A
     ASL A
     TAX
@@ -162,8 +166,9 @@
     LDA offset_x
     STA $0200, X
 
-    ; add 1 to counter
+    ; add 2 to counter
     LDX sprite_counter 
+    INX
     INX
     STX sprite_counter
 
@@ -532,8 +537,66 @@
   RTS
 .endproc
 
-.proc add_three_digits
+.proc load_cash_sprites
+  LDX cash_first_digit
+  LDA digits, X
+  STA cash_first_sprite
 
+  LDX cash_second_digit
+  LDA digits, X
+  STA cash_second_sprite
+
+  LDX cash_third_digit
+  LDA digits, X
+  STA cash_third_sprite
+
+  ; Assign first 12 bytes of OAM to the bid sprites.
+  LDA #$6E
+  STA $020C
+  LDA cash_first_sprite
+  STA $020D
+  LDA #$00
+  STA $020E
+  LDA #$D8
+  STA $020F
+
+  LDA #$6E
+  STA $0210
+  LDA cash_second_sprite
+  STA $0211
+  LDA #$00
+  STA $0212
+  LDA #$D0
+  STA $0213
+
+  LDA #$6E
+  STA $0214
+  LDA cash_third_sprite
+  STA $0215
+  LDA #$00
+  STA $0216
+  LDA #$C8
+  STA $0217
+  RTS
+.endproc
+
+.proc add_three_digits
+    a_is_zero:
+      LDA bid_third_digit
+      CMP cash_third_digit
+      BEQ b_is_zero
+      JMP first_digit
+    b_is_zero:
+      LDA bid_second_digit
+      CMP cash_second_digit
+      BEQ c_is_zero
+      JMP first_digit
+    c_is_zero:
+      LDA bid_first_digit
+      CMP cash_first_digit
+      BEQ done
+      JMP first_digit
+    
     ; Add 5 to the leftmost digit
     first_digit:
       LDA bid_first_digit
@@ -586,7 +649,6 @@
 .endproc
 
 .proc sbc_three_digits
-
     ; Check if the digits are all zero before any action
     a_is_zero:
       LDA bid_first_digit
@@ -600,7 +662,6 @@
       LDA bid_third_digit
       BEQ done
       JMP first_digit
-
 
     first_digit:
       LDA bid_first_digit
@@ -632,16 +693,6 @@
       LDX bid_third_digit
       DEX
       STX bid_third_digit
-
-      ; LDA bid_third_digit
-      ; CMP #$FF
-      ; BEQ third_is_zero
-      ; JMP done
-
-      ; third_is_zero:
-      ;   LDA #$09
-      ;   STA bid_third_digit
-
     done:
   RTS
 .endproc
@@ -692,6 +743,17 @@
   bid_first_sprite: .res 1
   bid_second_sprite: .res 1
   bid_third_sprite: .res 1
+
+  ; Cash Number
+  cash_first_digit: .res 1
+  cash_second_digit: .res 1
+  cash_third_digit: .res 1
+
+  cash_first_sprite: .res 1
+  cash_second_sprite: .res 1
+  cash_third_sprite: .res 1
+
+
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
 
 .segment "RODATA"
