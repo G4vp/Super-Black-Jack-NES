@@ -66,12 +66,8 @@
   STA cash_second_digit
   JSR load_cash_sprites
 
-  ; LDA #$10
-  ; STA pc_score
   JSR load_pc_score_sprites
 
-  ; LDA #$12
-  ; STA player_score
   JSR load_player_score_sprites
 
   LDA #$00
@@ -107,191 +103,6 @@
     JMP forever
 .endproc
 
-; Draw card: display a card on the screen with its sprites and background.
-; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
-.proc draw_card
-
-  ; Set card color from his suit
-  LDA card_set
-  CMP #$02
-  BCC set_color_first_pallete
-  LDA #$01
-  STA card_color
-  JMP continue
-  set_color_first_pallete:
-    LDA #$00
-    STA card_color
-  continue:
-
-  LDA card_x
-  STA offset_x
-
-  LDA card_rank
-  CLC
-  ADC #$05
-  STA card_rank
-
-  LDA card_set
-  CLC
-  ADC #$12
-  STA card_set
-
-  LDA card_color
-  BEQ color_is_zero
-  JMP load_sprites
-
-  ; Move the sprite 3 pixels to the left if the color changes.
-  color_is_zero:
-  LDA card_x
-  CLC
-  SBC #03
-  STA offset_x
-  
-
-  load_sprites:
-    ; Multiply 4 * sprite_counter
-    LDA sprite_counter
-    ASL A
-    ASL A
-    TAX
-
-    ; Number Tile
-    LDA card_y
-    STA $0200, X
-    INX
-    LDA card_rank
-    STA $0200, X
-    INX
-    LDA card_color
-    STA $0200, X
-    INX
-    LDA offset_x
-    STA $0200, X
-
-
-    ; Bottom Tile (Y + 8):
-    INX
-    LDA card_y
-    CLC
-    ADC #$08
-    STA $0200, X
-    INX
-    LDA card_set
-    STA $0200, X
-    INX
-    LDA card_color
-    STA $0200, X
-    INX
-    LDA offset_x
-    STA $0200, X
-
-    ; add 2 to counter
-    LDX sprite_counter 
-    INX
-    INX
-    STX sprite_counter
-
-  convert_xy_coords_to_nt: 
-
-  ; X: XXXXX***
-  ; Y: YYYYY***
-  ; NT address: 0010NNYY YYYXXXXX
-
-  ; All you have to do is a little bit shifting, ANDing and ORing to get the bits where they need to be.
-    LDA #%00001000 ; base value for $2000 (change lower 2 bits for other NTs)
-    STA high_byte
-    LDA card_y
-    AND #%11111000
-    ASL
-    ROL high_byte
-    ASL
-    ROL high_byte
-    STA low_byte
-    LDA card_x
-    LSR
-    LSR
-    LSR
-    ORA low_byte
-    STA low_byte
-    JSR draw_background_card
-
-  ; return to where the subroutine was called
-  RTS
-.endproc
-
-.proc draw_background_card
-
-  LDA PPUSTATUS ; LEFT TOP
-  LDA high_byte
-  STA PPUADDR
-  LDA low_byte
-  STA PPUADDR
-  LDX #$04
-  STX PPUDATA
-
-  LDA PPUSTATUS   
-  LDA low_byte ; RIGHT TOP
-  CLC 
-  ADC #$01
-  TAX
-  LDA high_byte
-  ADC #$00
-  STA PPUADDR
-  STX PPUADDR
-  LDX #$05
-  STX PPUDATA
-
-  LDA PPUSTATUS ; LEFT CENTER (ADD $20 to low byte and if set carry add it to high byte)
-  LDA low_byte
-  CLC 
-  ADC #$20
-  TAX
-  LDA high_byte
-  ADC #$00
-  STA PPUADDR
-  STX PPUADDR
-  LDX #$06
-  STX PPUDATA
-
-  LDA PPUSTATUS ; RIGHT CENTER (ADD $21 to low byte and if carry is set add it to high byte)
-  LDA low_byte
-  CLC 
-  ADC #$21
-  TAX
-  LDA high_byte
-  ADC #$00
-  STA PPUADDR
-  STX PPUADDR
-  LDX #$07
-  STX PPUDATA
-
-  LDA PPUSTATUS ; LEFT BOTTOM (ADD $40 to low byte and if carry is set add it to high byte)
-  LDA low_byte
-  CLC 
-  ADC #$40
-  TAX
-  LDA high_byte
-  ADC #$00
-  STA PPUADDR
-  STX PPUADDR
-  LDX #$08
-  STX PPUDATA
-
-  LDA PPUSTATUS ; RIGHT BOTTOM (ADD $41 to low byte and if carry is set add it to high byte)
-  LDA low_byte
-  CLC 
-  ADC #$41
-  TAX
-  LDA high_byte
-  ADC #$00
-  STA PPUADDR
-  STX PPUADDR
-  LDX #$09
-  STX PPUDATA
-
-  RTS
-.endproc
-
 ; Update Game State
 .proc update_hands
 
@@ -315,10 +126,18 @@
     BEQ check_B
 
     ; Set arguments for cards.
-    LDA rank_counter    
+    LDA rank_counter
     STA card_rank
     LDA suit_counter
     STA card_set
+
+    ; Set PC score
+    ; JSR add_pc_score
+
+    LDA #$0C
+    STA card_rank
+    JSR add_pc_score
+
 
     ; Set Card Position
     LDA dealer_x
@@ -469,7 +288,6 @@
       INX
       STX rank_counter
   
-
   done_checking:  
     LDA pad1
     STA prev_controls
@@ -477,7 +295,191 @@
   RTS
 .endproc
 
-; 
+; ========== CARD LOGIC ================
+; Draw card: display a card on the screen with its sprites and background.
+; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
+.proc draw_card
+
+  ; Set card color from his suit
+  LDA card_set
+  CMP #$02
+  BCC set_color_first_pallete
+  LDA #$01
+  STA card_color
+  JMP continue
+  set_color_first_pallete:
+    LDA #$00
+    STA card_color
+  continue:
+
+  LDA card_x
+  STA offset_x
+
+  LDA card_rank
+  CLC
+  ADC #$05
+  STA card_rank
+
+  LDA card_set
+  CLC
+  ADC #$12
+  STA card_set
+
+  LDA card_color
+  BEQ color_is_zero
+  JMP load_sprites
+
+  ; Move the sprite 3 pixels to the left if the color is 00.
+  color_is_zero:
+    LDA card_x
+    CLC
+    SBC #03
+    STA offset_x
+
+  load_sprites:
+    ; Multiply 4 * sprite_counter
+    LDA sprite_counter
+    ASL A
+    ASL A
+    TAX
+
+    ; Number Tile
+    LDA card_y
+    STA $0200, X
+    INX
+    LDA card_rank
+    STA $0200, X
+    INX
+    LDA card_color
+    STA $0200, X
+    INX
+    LDA offset_x
+    STA $0200, X
+
+
+    ; Bottom Tile (Y + 8):
+    INX
+    LDA card_y
+    CLC
+    ADC #$08
+    STA $0200, X
+    INX
+    LDA card_set
+    STA $0200, X
+    INX
+    LDA card_color
+    STA $0200, X
+    INX
+    LDA offset_x
+    STA $0200, X
+
+    ; add 2 to counter
+    LDX sprite_counter 
+    INX
+    INX
+    STX sprite_counter
+
+  convert_xy_coords_to_nt: 
+  ; X: XXXXX***
+  ; Y: YYYYY***
+  ; NT address: 0010NNYY YYYXXXXX
+
+  ; All you have to do is a little bit shifting, ANDing and ORing to get the bits where they need to be.
+    LDA #%00001000 ; base value for $2000 (change lower 2 bits for other NTs)
+    STA high_byte
+    LDA card_y
+    AND #%11111000
+    ASL
+    ROL high_byte
+    ASL
+    ROL high_byte
+    STA low_byte
+    LDA card_x
+    LSR
+    LSR
+    LSR
+    ORA low_byte
+    STA low_byte
+    JSR draw_background_card
+
+  ; return to where the subroutine was called
+  RTS
+.endproc
+
+.proc draw_background_card
+
+  LDA PPUSTATUS ; LEFT TOP
+  LDA high_byte
+  STA PPUADDR
+  LDA low_byte
+  STA PPUADDR
+  LDX #$04
+  STX PPUDATA
+
+  LDA PPUSTATUS   
+  LDA low_byte ; RIGHT TOP
+  CLC 
+  ADC #$01
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$05
+  STX PPUDATA
+
+  LDA PPUSTATUS ; LEFT CENTER (ADD $20 to low byte and if set carry add it to high byte)
+  LDA low_byte
+  CLC 
+  ADC #$20
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$06
+  STX PPUDATA
+
+  LDA PPUSTATUS ; RIGHT CENTER (ADD $21 to low byte and if carry is set add it to high byte)
+  LDA low_byte
+  CLC 
+  ADC #$21
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$07
+  STX PPUDATA
+
+  LDA PPUSTATUS ; LEFT BOTTOM (ADD $40 to low byte and if carry is set add it to high byte)
+  LDA low_byte
+  CLC 
+  ADC #$40
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$08
+  STX PPUDATA
+
+  LDA PPUSTATUS ; RIGHT BOTTOM (ADD $41 to low byte and if carry is set add it to high byte)
+  LDA low_byte
+  CLC 
+  ADC #$41
+  TAX
+  LDA high_byte
+  ADC #$00
+  STA PPUADDR
+  STX PPUADDR
+  LDX #$09
+  STX PPUDATA
+
+  RTS
+.endproc
+
+; ========= BACKGROUND LOGIC ============
 .proc load_background_graphics
 
 	load_background:
@@ -522,7 +524,7 @@
 
 .endproc
 
-; CASH AND BID 
+; ========= BID, CASH, and SCORES LOGIC=========
 .proc load_bid_sprites
   LDX bid_first_digit
   LDA digits, X
@@ -611,29 +613,19 @@
 
 ; Set pc's score sprites by taking the pc_score as argument.
 .proc load_pc_score_sprites
-
-
   ; Divide second digit by 10, N times
   LDA pc_score
+  LDX #$00
   loop:
     CMP #$0A
     BCC done
     SEC
     SBC #$0A
-
-    LDX pc_second_digit
     INX
-    STX pc_second_digit
-
     JMP loop
-    
   done: 
-  STA A_temp
-
-  LDA pc_first_digit
-  CLC
-  ADC A_temp
   STA pc_first_digit
+  STX pc_second_digit
 
   LDX pc_first_digit
   LDA digits, X
@@ -943,6 +935,57 @@
     RTS                 ; Return from subroutine
 .endproc 
 
+.proc add_pc_score
+
+  LDA card_rank
+
+  CMP #$0C 
+  BNE less_than_10  ; if rank != A, then check
+
+  LDA pc_score 
+  CMP #$0B
+  BCS add_A_1 ; if score >= 11, then add 1 to score
+  ; else, add 11.
+  LDA pc_score
+  CLC
+  ADC #$0B
+  STA pc_score
+
+  LDA #$01 ; Set was_eleven_used to 01
+  STA was_eleven_used
+  JMP continue
+
+  add_A_1:
+    LDA pc_score
+    CLC
+    ADC #$01
+    STA pc_score
+    JMP continue
+  
+  less_than_10:
+  LDA card_rank
+  CMP #$08
+  BCS more_than_10
+
+  LDA pc_score
+  CLC
+  ADC #$02
+  STA pc_score
+  
+  LDA pc_score
+  CLC
+  ADC card_rank
+  STA pc_score
+
+  JMP continue
+
+  more_than_10:
+
+  continue: 
+  JSR load_pc_score_sprites
+
+  RTS
+.endproc
 
 .segment "VECTORS"
 .addr nmi_handler, reset_handler, irq_handler
@@ -1020,6 +1063,9 @@
 
   ; Temp for Arithmethic Operations
   A_temp: .res 1
+
+  ; Temp to keep track of when the A with 11 was used
+  was_eleven_used: .res 1
 
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
