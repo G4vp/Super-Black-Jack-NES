@@ -57,6 +57,7 @@
 
   JSR load_background_graphics
   JSR load_bid_sprites
+  JSR load_pc_number_sprites
 
   ; Set Initial Cash to $20
   LDA #$00
@@ -588,6 +589,37 @@
   RTS
 .endproc
 
+.proc load_pc_number_sprites
+  LDX pc_first_digit
+  LDA digits, X
+  STA pc_first_sprite
+
+  LDX pc_second_digit
+  LDA digits, X
+  STA pc_second_sprite
+
+  ; Assign first 12 bytes of OAM to the bid sprites.
+  LDA #$06
+  STA $0218
+  LDA pc_first_sprite
+  STA $0219
+  LDA #$00
+  STA $021A
+  LDA #$24
+  STA $021B
+
+  LDA #$06
+  STA $021C
+  LDA pc_second_sprite
+  STA $021D
+  LDA #$00
+  STA $021E
+  LDA #$2C
+  STA $021F
+
+  RTS
+.endproc
+
 .proc add_bid
     ; Check if the bid reached the cash limit.
     a_is_zero:
@@ -868,6 +900,22 @@
   cash_first_sprite: .res 1
   cash_second_sprite: .res 1
   cash_third_sprite: .res 1
+
+  ; PC Number
+  pc_score: .res 1
+  pc_first_digit: .res 1
+  pc_second_digit: .res 1
+
+  pc_first_sprite: .res 1
+  pc_second_sprite: .res 1
+
+  ; Player Number
+  player_score: .res 1
+  Player_first_digit: .res 1
+  player_second_digit: .res 1
+
+  player_first_sprite: .res 1
+  player_second_sprite: .res 1
 
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
