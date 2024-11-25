@@ -56,15 +56,13 @@
     BNE load_palettes    
 
   JSR load_background_graphics
-
   JSR load_bid_sprites
 
+  ; Set Initial Cash to $20
   LDA #$00
   STA cash_first_digit
   LDA #$02
   STA cash_second_digit
-  LDA #$01
-  STA cash_third_digit
   JSR load_cash_sprites
 
 
@@ -101,8 +99,8 @@
     JMP forever
 .endproc
 
-  ; Draw card: display a card on the screen with its sprites and background.
-  ; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
+; Draw card: display a card on the screen with its sprites and background.
+; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
 .proc draw_card
   LDA card_x
   STA offset_x
@@ -273,6 +271,7 @@
   RTS
 .endproc
 
+; Update Game State
 .proc update_hands
 
   LDA pad1
@@ -405,8 +404,12 @@
     AND #BTN_UP
     BEQ check_DOWN
 
-    JSR add_three_digits
+    ; JSR add_cash
+    ; JSR load_cash_sprites
+
+    JSR add_bid
     JSR load_bid_sprites
+
 
     JMP done_checking
   
@@ -419,7 +422,10 @@
     AND #BTN_DOWN
     BEQ done_checking
 
-    JSR sbc_three_digits
+    ; JSR sbc_cash
+    ; JSR load_cash_sprites
+
+    JSR sbc_bid
     JSR load_bid_sprites
 
     JMP done_checking
@@ -450,6 +456,7 @@
   RTS
 .endproc
 
+; 
 .proc load_background_graphics
 
 	load_background:
@@ -494,6 +501,7 @@
 
 .endproc
 
+; CASH AND BID 
 .proc load_bid_sprites
   LDX bid_first_digit
   LDA digits, X
@@ -580,7 +588,8 @@
   RTS
 .endproc
 
-.proc add_three_digits
+.proc add_bid
+    ; Check if the bid reached the cash limit.
     a_is_zero:
       LDA bid_third_digit
       CMP cash_third_digit
@@ -648,7 +657,7 @@
   RTS
 .endproc
 
-.proc sbc_three_digits
+.proc sbc_bid
     ; Check if the digits are all zero before any action
     a_is_zero:
       LDA bid_first_digit
@@ -697,6 +706,110 @@
   RTS
 .endproc
 
+.proc add_cash
+    ; Add cash and bid first digit
+    LDA cash_first_digit
+    CLC 
+    ADC bid_first_digit
+    CMP #$0A        ; Compare against decimal 10
+    BCC no_carry_first_digit ; If result < 10, no carry
+    SBC #$0A        ; Subtract 10 to adjust BCD
+    STA cash_first_digit
+    LDA cash_second_digit ; Add carry to the next digit
+    CLC
+    ADC #$01
+    STA cash_second_digit
+    JMP second_digit_continue
+
+  no_carry_first_digit:
+    STA cash_first_digit
+
+  second_digit_continue:
+    ; Add cash and bid second digit
+    LDA cash_second_digit
+    CLC
+    ADC bid_second_digit
+    CMP #$0A        ; Compare against decimal 10
+    BCC no_carry_second_digit ; If result < 10, no carry
+    SBC #$0A        ; Subtract 10 to adjust BCD
+    STA cash_second_digit
+    LDA cash_third_digit ; Add carry to the next digit
+    CLC
+    ADC #$01
+    STA cash_third_digit
+    JMP third_digit_continue
+
+  no_carry_second_digit:
+    STA cash_second_digit
+
+  third_digit_continue:
+    ; Add cash and bid third digit 
+    LDA cash_third_digit
+    CLC
+    ADC bid_third_digit
+    CMP #$0A        
+    BCC no_carry_third_digit ; If result < 10, no carry
+    SBC #$0A        
+    STA cash_third_digit
+    JMP done
+
+  no_carry_third_digit:
+    STA cash_third_digit
+  done:
+    RTS        
+.endproc
+
+.proc sbc_cash
+    ; Subtract bid from cash (first digit)
+    LDA cash_first_digit
+    SEC                 ; Set carry for subtraction
+    SBC bid_first_digit
+    BPL no_borrow_first_digit ; If result >= 0, no borrow
+    ADC #$0A            ; Adjust result by adding 10
+    STA cash_first_digit
+    LDA cash_second_digit ; Subtract borrow from next digit
+    SEC
+    SBC #$01
+    STA cash_second_digit
+    JMP second_digit_continue
+
+  no_borrow_first_digit:
+    STA cash_first_digit
+
+  second_digit_continue:
+    ; Subtract bid from cash (second digit)
+    LDA cash_second_digit
+    SEC
+    SBC bid_second_digit
+    BPL no_borrow_second_digit ; If result >= 0, no borrow
+    ADC #$0A            ; Adjust result by adding 10
+    STA cash_second_digit
+    LDA cash_third_digit ; Subtract borrow from next digit
+    SEC
+    SBC #$01
+    STA cash_third_digit
+    JMP third_digit_continue
+
+  no_borrow_second_digit:
+    STA cash_second_digit
+
+  third_digit_continue:
+    ; Subtract bid from cash (third digit)
+    LDA cash_third_digit
+    SEC
+    SBC bid_third_digit
+    BPL no_borrow_third_digit ; If result >= 0, no borrow
+    ADC #$0A            ; Adjust result by adding 10
+    STA cash_third_digit
+    JMP done
+
+  no_borrow_third_digit:
+    STA cash_third_digit
+
+  done:
+    RTS                 ; Return from subroutine
+.endproc 
+
 
 .segment "VECTORS"
 .addr nmi_handler, reset_handler, irq_handler
@@ -744,6 +857,9 @@
   bid_second_sprite: .res 1
   bid_third_sprite: .res 1
 
+  bid_high: .res 1
+  bid_low: .res 1
+
   ; Cash Number
   cash_first_digit: .res 1
   cash_second_digit: .res 1
@@ -757,87 +873,87 @@
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
 
 .segment "RODATA"
-digits:
-  .byte $1F, $16, $17, $18, $19, $1A, $1B, $1C, $1D, $1E
-palettes:
-  .byte $19, $0f, $21, $32
-  .byte $19, $0f, $21, $32
-  .byte $19, $0f, $21, $32
-  .byte $19, $0f, $21, $32
+  digits:
+    .byte $1F, $16, $17, $18, $19, $1A, $1B, $1C, $1D, $1E
+  palettes:
+    .byte $19, $0f, $21, $32
+    .byte $19, $0f, $21, $32
+    .byte $19, $0f, $21, $32
+    .byte $19, $0f, $21, $32
 
-  .byte $19, $32, $15, $23
-  .byte $19, $19, $32, $32
-  .byte $19, $0f, $21, $32
-  .byte $19, $0f, $21, $32
+    .byte $19, $32, $15, $23
+    .byte $19, $19, $32, $32
+    .byte $19, $0f, $21, $32
+    .byte $19, $0f, $21, $32
 
-background:
-	.byte $00,$00,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$cb,$23,$16,$2e,$cb,$cb,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$cb,$cb,$00,$00,$cb,$cb,$cb,$cb
-	.byte $00,$cb,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10
-	.byte $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$cb,$cb
-	.byte $00,$cb,$12,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb
-	.byte $cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$13,$00,$00
-	.byte $cb,$75,$12,$75,$0a,$0b,$cb,$00,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb
-	.byte $cb,$cb,$cb,$00,$cb,$00,$00,$00,$00,$00,$42,$00,$00,$13,$00,$00
-	.byte $cb,$cb,$12,$00,$0c,$0d,$00,$00,$00,$00,$00,$75,$75,$75,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $75,$75,$12,$75,$0e,$0f,$75,$00,$75,$75,$75,$00,$75,$75,$75,$00
-	.byte $00,$00,$00,$00,$00,$00,$cb,$cb,$00,$cb,$cb,$cb,$cb,$13,$cb,$cb
-	.byte $00,$59,$12,$75,$cb,$75,$75,$75,$75,$75,$00,$00,$75,$00,$75,$75
-	.byte $75,$75,$75,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$00,$00,$13,$00,$a2
+  background:
+    .byte $00,$00,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$cb,$23,$16,$2e,$cb,$cb,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$cb,$cb,$00,$00,$cb,$cb,$cb,$cb
+    .byte $00,$cb,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10
+    .byte $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$cb,$cb
+    .byte $00,$cb,$12,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb
+    .byte $cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$13,$00,$00
+    .byte $cb,$75,$12,$75,$0a,$0b,$cb,$00,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb
+    .byte $cb,$cb,$cb,$00,$cb,$00,$00,$00,$00,$00,$42,$00,$00,$13,$00,$00
+    .byte $cb,$cb,$12,$00,$0c,$0d,$00,$00,$00,$00,$00,$75,$75,$75,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $75,$75,$12,$75,$0e,$0f,$75,$00,$75,$75,$75,$00,$75,$75,$75,$00
+    .byte $00,$00,$00,$00,$00,$00,$cb,$cb,$00,$cb,$cb,$cb,$cb,$13,$cb,$cb
+    .byte $00,$59,$12,$75,$cb,$75,$75,$75,$75,$75,$00,$00,$75,$00,$75,$75
+    .byte $75,$75,$75,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$00,$00,$13,$00,$a2
 
-background1:
-	.byte $59,$59,$12,$75,$cb,$75,$75,$75,$00,$75,$00,$cb,$75,$cb,$cb,$75
-	.byte $cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$00,$00,$00,$00,$00,$13,$00,$a2
-	.byte $59,$59,$12,$cb,$75,$cb,$cb,$cb,$cb,$75,$cb,$cb,$cb,$cb,$cb,$cb
-	.byte $cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$00,$00,$00,$00,$00,$13,$a2,$a2
-	.byte $cb,$75,$12,$cb,$75,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$75,$cb
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$a2,$a2
-	.byte $75,$cb,$12,$cb,$cb,$cb,$cb,$cb,$cb,$75,$75,$75,$cb,$cb,$cb,$75
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$a2,$a2
-	.byte $cb,$cb,$12,$cb,$75,$cb,$cb,$00,$75,$cb,$cb,$cb,$cb,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $75,$75,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11
-	.byte $11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$00,$00
-	.byte $cb,$cb,$ab,$ab,$ab,$ab,$cb,$cb,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$16,$14,$26,$1b,$2e,$2f,$00,$00,$00,$00,$00,$00,$00
-	.byte $cb,$cb,$23,$1f,$14,$2c,$18,$25,$2e,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$15,$1c,$17,$2e,$2f,$00,$00,$00,$00,$00,$00,$00
+  background1:
+    .byte $59,$59,$12,$75,$cb,$75,$75,$75,$00,$75,$00,$cb,$75,$cb,$cb,$75
+    .byte $cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$00,$00,$00,$00,$00,$13,$00,$a2
+    .byte $59,$59,$12,$cb,$75,$cb,$cb,$cb,$cb,$75,$cb,$cb,$cb,$cb,$cb,$cb
+    .byte $cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$00,$00,$00,$00,$00,$13,$a2,$a2
+    .byte $cb,$75,$12,$cb,$75,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$cb,$75,$cb
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$a2,$a2
+    .byte $75,$cb,$12,$cb,$cb,$cb,$cb,$cb,$cb,$75,$75,$75,$cb,$cb,$cb,$75
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$a2,$a2
+    .byte $cb,$cb,$12,$cb,$75,$cb,$cb,$00,$75,$cb,$cb,$cb,$cb,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $75,$75,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11
+    .byte $11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$00,$00
+    .byte $cb,$cb,$ab,$ab,$ab,$ab,$cb,$cb,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$16,$14,$26,$1b,$2e,$2f,$00,$00,$00,$00,$00,$00,$00
+    .byte $cb,$cb,$23,$1f,$14,$2c,$18,$25,$2e,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$15,$1c,$17,$2e,$2f,$00,$00,$00,$00,$00,$00,$00
 
-background2:
-	.byte $cb,$cb,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10
-	.byte $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$00,$00
-	.byte $cb,$cb,$12,$00,$cb,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $00,$cb,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $00,$00,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $00,$00,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+  background2:
+    .byte $cb,$cb,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10
+    .byte $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$00,$00
+    .byte $cb,$cb,$12,$00,$cb,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $00,$cb,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $00,$00,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $00,$00,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
 
-background3:
-	.byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $00,$00,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
-	.byte $00,$00,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11
-	.byte $11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $25,$14,$24,$28,$18,$1f,$00,$2c,$83,$1a,$14,$15,$25,$1c,$18,$1f
-	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	.byte $55,$55,$51,$50,$50,$50,$51,$55,$55,$55,$55,$55,$55,$51,$54,$51
-	.byte $55,$55,$55,$55,$05,$05,$00,$55,$55,$55,$15,$05,$45,$55,$15,$01
-	.byte $55,$05,$05,$05,$05,$05,$05,$11,$55,$00,$00,$00,$00,$00,$00,$11
-	.byte $45,$50,$50,$50,$50,$50,$50,$11,$05,$05,$05,$05,$00,$00,$00,$00
+  background3:
+    .byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $78,$78,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $00,$00,$12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$13,$00,$00
+    .byte $00,$00,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11
+    .byte $11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $25,$14,$24,$28,$18,$1f,$00,$2c,$83,$1a,$14,$15,$25,$1c,$18,$1f
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $55,$55,$51,$50,$50,$50,$51,$55,$55,$55,$55,$55,$55,$51,$54,$51
+    .byte $55,$55,$55,$55,$05,$05,$00,$55,$55,$55,$15,$05,$45,$55,$15,$01
+    .byte $55,$05,$05,$05,$05,$05,$05,$11,$55,$00,$00,$00,$00,$00,$00,$11
+    .byte $45,$50,$50,$50,$50,$50,$50,$11,$05,$05,$05,$05,$00,$00,$00,$00
