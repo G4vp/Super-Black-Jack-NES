@@ -57,7 +57,8 @@
 
   JSR load_background_graphics
   JSR load_bid_sprites
-  JSR load_pc_number_sprites
+  JSR load_pc_score_sprites
+  JSR load_player_score_sprites
 
   ; Set Initial Cash to $20
   LDA #$00
@@ -589,7 +590,7 @@
   RTS
 .endproc
 
-.proc load_pc_number_sprites
+.proc load_pc_score_sprites
   LDX pc_first_digit
   LDA digits, X
   STA pc_first_sprite
@@ -605,7 +606,7 @@
   STA $0219
   LDA #$00
   STA $021A
-  LDA #$24
+  LDA #$2C
   STA $021B
 
   LDA #$06
@@ -614,8 +615,39 @@
   STA $021D
   LDA #$00
   STA $021E
-  LDA #$2C
+  LDA #$24
   STA $021F
+
+  RTS
+.endproc
+
+.proc load_player_score_sprites
+  LDX player_first_digit
+  LDA digits, X
+  STA player_first_sprite
+
+  LDX player_second_digit
+  LDA digits, X
+  STA player_second_sprite
+
+  ; Assign first 12 bytes of OAM to the bid sprites.
+  LDA #$76
+  STA $0220
+  LDA player_first_sprite
+  STA $0221
+  LDA #$00
+  STA $0222
+  LDA #$4C
+  STA $0223
+
+  LDA #$76
+  STA $0224
+  LDA player_second_sprite
+  STA $0225
+  LDA #$00
+  STA $0226
+  LDA #$44
+  STA $0227
 
   RTS
 .endproc
@@ -911,7 +943,7 @@
 
   ; Player Number
   player_score: .res 1
-  Player_first_digit: .res 1
+  player_first_digit: .res 1
   player_second_digit: .res 1
 
   player_first_sprite: .res 1
