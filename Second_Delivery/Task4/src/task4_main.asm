@@ -56,9 +56,8 @@
     BNE load_palettes    
 
   JSR load_background_graphics
+
   JSR load_bid_sprites
-  JSR load_pc_score_sprites
-  JSR load_player_score_sprites
 
   ; Set Initial Cash to $20
   LDA #$00
@@ -66,6 +65,14 @@
   LDA #$02
   STA cash_second_digit
   JSR load_cash_sprites
+
+  ; LDA #$10
+  ; STA pc_score
+  JSR load_pc_score_sprites
+
+  ; LDA #$12
+  ; STA player_score
+  JSR load_player_score_sprites
 
 
   LDA #$00
@@ -560,7 +567,7 @@
   LDA digits, X
   STA cash_third_sprite
 
-  ; Assign first 12 bytes of OAM to the bid sprites.
+  ; Assign 12 bytes of OAM to the cash sprites.
   LDA #$6E
   STA $020C
   LDA cash_first_sprite
@@ -590,7 +597,32 @@
   RTS
 .endproc
 
+; Set pc's score sprites by taking the pc_score as argument.
 .proc load_pc_score_sprites
+
+
+  ; Divide second digit by 10, N times
+  LDA pc_score
+  loop:
+    CMP #$0A
+    BCC done
+    SEC
+    SBC #$0A
+
+    LDX pc_second_digit
+    INX
+    STX pc_second_digit
+
+    JMP loop
+    
+  done: 
+  STA A_temp
+
+  LDA pc_first_digit
+  CLC
+  ADC A_temp
+  STA pc_first_digit
+
   LDX pc_first_digit
   LDA digits, X
   STA pc_first_sprite
@@ -599,7 +631,7 @@
   LDA digits, X
   STA pc_second_sprite
 
-  ; Assign first 12 bytes of OAM to the bid sprites.
+  ; Assign first 8 bytes of OAM to the PC score sprites.
   LDA #$06
   STA $0218
   LDA pc_first_sprite
@@ -621,7 +653,32 @@
   RTS
 .endproc
 
+; Set player's score sprites by taking the player_score as argument.
 .proc load_player_score_sprites
+
+
+  ; Divide second digit by 10, N times
+  LDA player_score
+  loop:
+    CMP #$0A
+    BCC done
+    SEC
+    SBC #$0A
+
+    LDX player_second_digit
+    INX
+    STX player_second_digit
+
+    JMP loop
+    
+  done: 
+  STA A_temp
+
+  LDA player_first_digit
+  CLC
+  ADC A_temp
+  STA player_first_digit
+
   LDX player_first_digit
   LDA digits, X
   STA player_first_sprite
@@ -948,6 +1005,9 @@
 
   player_first_sprite: .res 1
   player_second_sprite: .res 1
+
+  ; Temp for Arithmethic Operations
+  A_temp: .res 1
 
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
