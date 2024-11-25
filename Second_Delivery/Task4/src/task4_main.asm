@@ -74,7 +74,6 @@
   ; STA player_score
   JSR load_player_score_sprites
 
-
   LDA #$00
   STA prev_controls
   
@@ -111,6 +110,19 @@
 ; Draw card: display a card on the screen with its sprites and background.
 ; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
 .proc draw_card
+
+  ; Set card color from his suit
+  LDA card_set
+  CMP #$02
+  BCC set_color_first_pallete
+  LDA #$01
+  STA card_color
+  JMP continue
+  set_color_first_pallete:
+    LDA #$00
+    STA card_color
+  continue:
+
   LDA card_x
   STA offset_x
 
@@ -337,9 +349,9 @@
 
     dealer_continue: 
       ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-      LDA card_color
-      EOR #%00000001
-      STA card_color
+      ; LDA card_color
+      ; EOR #%00000001
+      ; STA card_color
 
       ; Increment dealers counter cards
       LDX dealer_counter_cards
@@ -393,10 +405,10 @@
       STA player_y
 
     player_continue: 
-      ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-      LDA card_color
-      EOR #%00000001
-      STA card_color
+      ; ; Change card_color from 00 to 01. Change card_color from 01 to 00.
+      ; LDA card_color
+      ; EOR #%00000001
+      ; STA card_color
 
       ; Increment player counter cards
       LDX player_counter_cards
