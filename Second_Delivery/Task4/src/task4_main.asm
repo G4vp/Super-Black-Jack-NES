@@ -132,10 +132,6 @@
     STA card_set
 
     ; Set PC score
-    ; JSR add_pc_score
-
-    LDA #$0C
-    STA card_rank
     JSR add_pc_score
 
 
@@ -955,33 +951,53 @@
   STA was_eleven_used
   JMP continue
 
-  add_A_1:
-    LDA pc_score
+  add_A_1: ; If score >= 11, then A = 1
+    LDA pc_score 
     CLC
     ADC #$01
     STA pc_score
     JMP continue
   
-  less_than_10:
-  LDA card_rank
-  CMP #$08
-  BCS more_than_10
+  less_than_10: ;  Add the cards from (2 to 10)
+    LDA card_rank
+    CMP #$09
+    BCS more_than_10
 
-  LDA pc_score
-  CLC
-  ADC #$02
-  STA pc_score
-  
-  LDA pc_score
-  CLC
-  ADC card_rank
-  STA pc_score
+    LDA pc_score
+    CLC
+    ADC #$02
+    STA pc_score
+    
+    LDA pc_score
+    CLC
+    ADC card_rank
+    STA pc_score
+    JMP continue
 
-  JMP continue
-
-  more_than_10:
+  more_than_10: ; Call when card suit is J,Q,K and adds 10 to pc score.
+    LDA pc_score
+    CLC
+    ADC #$0A
+    STA pc_score
 
   continue: 
+
+  LDA pc_score ; Check if Score > 21, and then if a 11 was used, subtracts 11 and add 1 to score.
+  CMP #$16 
+  BCC continue_to_load
+  LDA was_eleven_used
+  CMP #$01
+  BNE continue_to_load
+  LDA pc_score
+  SEC
+  SBC #$0B ; PC score - 11
+  CLC
+  ADC #$01 ; PC Score + 1
+  STA pc_score
+  LDA #$00
+  STA was_eleven_used
+
+  continue_to_load:
   JSR load_pc_score_sprites
 
   RTS
