@@ -124,23 +124,78 @@
     JMP check_second_state
 
     second_state:
-    
-    LDX game_state
-    INX
-    STX game_state
+      LDX game_state
+      INX
+      STX game_state
 
     check_second_state:
-
     LDA game_state
     CMP #$01
     BNE done_A
 
     ; Set MAX cards for players
-    LDA dealer_counter_cards
-    CMP #$0C
+    LDA player_counter_cards
+    CMP #$0E
     BEQ check_B
 
     ; Set arguments for cards.
+    LDA rank_counter    
+    STA card_rank
+    LDA suit_counter
+    STA card_set
+
+    ; Set Player score
+    JSR add_player_score
+
+    ; Set X Y for player's card
+    LDA player_x
+    STA card_x
+    LDA player_y
+    STA card_y
+
+    JSR draw_card
+      
+    ; Set X to the next position.
+    LDA player_x
+    CLC
+    ADC #24
+    STA player_x
+
+    ; If the horizontal line reaches its maximum, then draw on the next line.
+    LDA player_counter_cards
+    CMP #$06
+    BEQ  player_next_line; 
+    JMP player_continue
+
+    player_next_line:
+      LDA #$26
+      STA player_x
+      LDA #$B0
+      STA player_y
+
+    player_continue: 
+      ; Increment player counter cards
+      LDX player_counter_cards
+      INX
+      STX player_counter_cards
+      JMP change_card_info
+    done_A:
+
+  check_B:
+    LDA pad1
+    CMP prev_controls
+    BEQ check_UP
+
+    LDA pad1
+    AND #BTN_B
+    BEQ check_UP
+
+    ; Set MAX cards for dealer
+    LDA dealer_counter_cards
+    CMP #$0C ; 12
+    BEQ check_UP
+
+     ; Set arguments for cards.
     LDA rank_counter
     STA card_rank
     LDA suit_counter
@@ -183,63 +238,7 @@
       STX dealer_counter_cards
       JMP change_card_info
     
-    done_A:
-
-  check_B:
-    LDA pad1
-    CMP prev_controls
-    BEQ check_UP
-
-    LDA pad1
-    AND #BTN_B
-    BEQ check_UP
-
-    ; Set MAX cards for players
-    LDA player_counter_cards
-    CMP #$0E ; 14
-    BEQ check_UP
-
-    ; Set arguments for cards.
-    LDA rank_counter    
-    STA card_rank
-    LDA suit_counter
-    STA card_set
-
-    ; Set Player score
-    JSR add_player_score
-
-    ; Set X Y for player's card
-    LDA player_x
-    STA card_x
-    LDA player_y
-    STA card_y
-
-    JSR draw_card
-      
-    ; Set X to the next position.
-    LDA player_x
-    CLC
-    ADC #24
-    STA player_x
-
-    ; If the horizontal line reaches its maximum, then draw on the next line.
-    LDA player_counter_cards
-    CMP #$06
-    BEQ  player_next_line; 
-    JMP player_continue
-
-    player_next_line:
-      LDA #$26
-      STA player_x
-      LDA #$B0
-      STA player_y
-
-    player_continue: 
-      ; Increment player counter cards
-      LDX player_counter_cards
-      INX
-      STX player_counter_cards
-    JMP change_card_info
+    done_B:
 
   check_UP:
     LDA pad1
