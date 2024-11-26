@@ -26,6 +26,8 @@
   JSR read_controller1
   JSR update_hands
 
+  JSR initial_hands
+
   LDA #$00
   STA PPUSCROLL
   STA PPUSCROLL
@@ -101,7 +103,78 @@
     JMP forever
 .endproc
 
+; .proc wait_vblank
+;   wait_vblank_loop:
+;       BIT $2002         ; Read PPU status
+;       BPL wait_vblank_loop ; Loop until VBlank flag is set (bit 7 = 1)
+;       RTS               ; Return from subroutine
+; .endproc
+
+; .proc delay
+;     LDX #$FF
+; delay_outer:
+;     LDY #$FF
+; delay_inner:
+;         DEY
+;         BNE delay_inner
+;     DEX
+;     BNE delay_outer
+;     RTS
+; .endproc
+
 ; Update Game State
+.proc initial_hands
+  LDA initial_hand_state
+  CMP #$01
+  BNE stop_index
+
+  check_index:
+  LDA initial_hand_index
+  CMP #$03
+  BCS stop_index
+
+  first_call:
+  LDA initial_hand_index
+  CMP #$00
+  BNE second_call
+
+  JSR generate_player_card
+  JSR change_card_info
+  JMP done
+
+  second_call:
+  LDA initial_hand_index
+  CMP #$01
+  BNE third_call
+
+  JSR generate_player_card
+  JSR change_card_info
+  JMP done
+
+  third_call:
+  LDA initial_hand_index
+  CMP #$02
+  BNE reset
+
+  JSR generate_dealer_card
+  JSR change_card_info
+  JMP done
+
+  reset:
+    LDA #$00
+    STA initial_hand_state
+    STA initial_hand_index
+    JMP stop_index
+
+  done:
+    LDX initial_hand_index
+    INX
+    STX initial_hand_index
+
+  stop_index:
+  RTS
+.endproc
+
 .proc update_hands
 
   LDA pad1
@@ -120,15 +193,26 @@
 
     LDA game_state
     CMP #$00
-    BEQ second_state
-    JMP check_second_state
+    BEQ A_second_state
+    JMP A_check_second_state
 
-    second_state:
+    A_second_state: ; Spawn 1 dealer card, 2 players cards and set STATE to 01
+      ; JSR generate_player_card
+      ; JSR change_card_info
+
+      ; JSR generate_dealer_card
+      ; JSR change_card_info
+
       LDX game_state
       INX
       STX game_state
 
-    check_second_state:
+      LDX #$01
+      STX initial_hand_state
+
+      JMP done_A
+
+    A_check_second_state:
     LDA game_state
     CMP #$01
     BNE done_A
@@ -138,47 +222,9 @@
     CMP #$0E
     BEQ check_B
 
-    ; Set arguments for cards.
-    LDA rank_counter    
-    STA card_rank
-    LDA suit_counter
-    STA card_set
-
-    ; Set Player score
-    JSR add_player_score
-
-    ; Set X Y for player's card
-    LDA player_x
-    STA card_x
-    LDA player_y
-    STA card_y
-
-    JSR draw_card
-      
-    ; Set X to the next position.
-    LDA player_x
-    CLC
-    ADC #24
-    STA player_x
-
-    ; If the horizontal line reaches its maximum, then draw on the next line.
-    LDA player_counter_cards
-    CMP #$06
-    BEQ  player_next_line; 
-    JMP player_continue
-
-    player_next_line:
-      LDA #$26
-      STA player_x
-      LDA #$B0
-      STA player_y
-
-    player_continue: 
-      ; Increment player counter cards
-      LDX player_counter_cards
-      INX
-      STX player_counter_cards
-      JMP change_card_info
+    JSR generate_player_card
+    JSR change_card_info
+    
     done_A:
 
   check_B:
@@ -190,53 +236,28 @@
     AND #BTN_B
     BEQ check_UP
 
+    ; LDA game_state
+    ; CMP #$00
+    ; BEQ B_second_state
+    ; JMP B_check_second_state
+
+    ; B_second_state:
+    ;   LDX game_state
+    ;   INX
+    ;   STX game_state
+
+    B_check_second_state:
+      LDA game_state
+      CMP #$01
+      BNE done_B
+      
     ; Set MAX cards for dealer
     LDA dealer_counter_cards
     CMP #$0C ; 12
     BEQ check_UP
 
-     ; Set arguments for cards.
-    LDA rank_counter
-    STA card_rank
-    LDA suit_counter
-    STA card_set
-
-    ; Set PC score
-    JSR add_pc_score
-
-    ; Set Card Position
-    LDA dealer_x
-    STA card_x
-    LDA dealer_y
-    STA card_y
-
-    ; Call Subroutine to draw the card
-    JSR draw_card
-    
-    ; Set X to the next position.
-    LDA dealer_x
-    CLC
-    ADC #24 ; It has to be a multiple of 8
-    STA dealer_x
-
-    ; If the horizontal line reaches its maximum, then draw on the next line.
-    LDA dealer_counter_cards ;if dealer_counter_cards > 5
-    CMP #$05
-    BEQ  dealer_next_line
-    JMP dealer_continue
-
-    dealer_next_line:
-      LDA #$3E
-      STA dealer_x
-      LDA #$40
-      STA dealer_y
-
-    dealer_continue: 
-      ; Increment dealers counter cards
-      LDX dealer_counter_cards
-      INX
-      STX dealer_counter_cards
-      JMP change_card_info
+    JSR generate_dealer_card
+    JSR change_card_info
     
     done_B:
 
@@ -283,29 +304,10 @@
 
     done_down:
     JMP done_checking
-
-  ; Change the card's suit and number after input
-  change_card_info:
-    LDX suit_counter
-    INX
-    STX suit_counter
-    LDA suit_counter
-    CMP #$04
-    BEQ reg_was_4
-    JMP done_checking
-
-    ; After all suits for a number were shown, we change the rank and reset the suit counter.
-    reg_was_4:
-      LDA #$00
-      STA suit_counter
-      LDX rank_counter
-      INX
-      STX rank_counter
   
   done_checking:  
     LDA pad1
     STA prev_controls
-
   RTS
 .endproc
 
@@ -493,6 +495,118 @@
   RTS
 .endproc
 
+.proc generate_dealer_card
+     ; Set arguments for cards.
+    
+    LDA rank_counter
+    STA card_rank
+    LDA suit_counter
+    STA card_set
+
+    ; Set PC score
+    JSR add_pc_score
+
+    ; Set Card Position
+    LDA dealer_x
+    STA card_x
+    LDA dealer_y
+    STA card_y
+
+    ; Call Subroutine to draw the card
+    JSR draw_card
+    
+    ; Set X to the next position.
+    LDA dealer_x
+    CLC
+    ADC #24 ; It has to be a multiple of 8
+    STA dealer_x
+
+    ; If the horizontal line reaches its maximum, then draw on the next line.
+    LDA dealer_counter_cards ;if dealer_counter_cards > 5
+    CMP #$05
+    BEQ  dealer_next_line
+    JMP dealer_continue
+
+    dealer_next_line:
+      LDA #$3E
+      STA dealer_x
+      LDA #$40
+      STA dealer_y
+
+    dealer_continue: 
+      ; Increment dealers counter cards
+      LDX dealer_counter_cards
+      INX
+      STX dealer_counter_cards
+  RTS
+.endproc
+
+.proc generate_player_card
+    ; Set arguments for cards.
+    LDA rank_counter    
+    STA card_rank
+    LDA suit_counter
+    STA card_set
+
+    ; Set Player score
+    JSR add_player_score
+
+    ; Set X Y for player's card
+    LDA player_x
+    STA card_x
+    LDA player_y
+    STA card_y
+
+    JSR draw_card
+      
+    ; Set X to the next position.
+    LDA player_x
+    CLC
+    ADC #24
+    STA player_x
+
+    ; If the horizontal line reaches its maximum, then draw on the next line.
+    LDA player_counter_cards
+    CMP #$06
+    BEQ  player_next_line; 
+    JMP player_continue
+
+    player_next_line:
+      LDA #$26
+      STA player_x
+      LDA #$B0
+      STA player_y
+
+    player_continue: 
+      ; Increment player counter cards
+      LDX player_counter_cards
+      INX
+      STX player_counter_cards
+  RTS
+.endproc
+
+.proc change_card_info
+  ; Change the card's suit and number after input
+  change_card_info:
+    LDX suit_counter
+    INX
+    STX suit_counter
+    LDA suit_counter
+    CMP #$04
+    BEQ reg_was_4
+    JMP done_checking
+
+    ; After all suits for a number were shown, we change the rank and reset the suit counter.
+    reg_was_4:
+      LDA #$00
+      STA suit_counter
+      LDX rank_counter
+      INX
+      STX rank_counter
+    
+  done_checking:
+  RTS
+.endproc
 ; ========= BACKGROUND LOGIC ============
 .proc load_background_graphics
 
@@ -1169,6 +1283,8 @@
   ; Game State (00 Select Bid, 01 Player's turn, 02 Dealer's turn)
   game_state: .res 1
 
+  initial_hand_state: .res 1
+  initial_hand_index: .res 1
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
 
