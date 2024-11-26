@@ -56,7 +56,6 @@
     BNE load_palettes    
 
   JSR load_background_graphics
-
   JSR load_bid_sprites
 
   ; Set Initial Cash to $20
@@ -67,7 +66,6 @@
   JSR load_cash_sprites
 
   JSR load_pc_score_sprites
-
   JSR load_player_score_sprites
 
   LDA #$00
@@ -134,7 +132,6 @@
     ; Set PC score
     JSR add_pc_score
 
-
     ; Set Card Position
     LDA dealer_x
     STA card_x
@@ -192,6 +189,9 @@
     STA card_rank
     LDA suit_counter
     STA card_set
+
+    ; Set Player score
+    JSR add_player_score
 
     ; Set X Y for player's card
     LDA player_x
@@ -653,31 +653,22 @@
   RTS
 .endproc
 
-; Set player's score sprites by taking the player_score as argument.
+; Set player's score sprites by taking the player_score as argument. NEEDS UPDATE
 .proc load_player_score_sprites
-
 
   ; Divide second digit by 10, N times
   LDA player_score
+  LDX #$00
   loop:
     CMP #$0A
     BCC done
     SEC
     SBC #$0A
-
-    LDX player_second_digit
     INX
-    STX player_second_digit
-
     JMP loop
-    
   done: 
-  STA A_temp
-
-  LDA player_first_digit
-  CLC
-  ADC A_temp
   STA player_first_digit
+  STX player_second_digit
 
   LDX player_first_digit
   LDA digits, X
@@ -947,8 +938,8 @@
   ADC #$0B
   STA pc_score
 
-  LDA #$01 ; Set was_eleven_used to 01
-  STA was_eleven_used
+  LDA #$01 ; Set pc_used_eleven to 01
+  STA pc_used_eleven
   JMP continue
 
   add_A_1: ; If score >= 11, then A = 1
@@ -985,7 +976,7 @@
   LDA pc_score ; Check if Score > 21, and then if a 11 was used, subtracts 11 and add 1 to score.
   CMP #$16 
   BCC continue_to_load
-  LDA was_eleven_used
+  LDA pc_used_eleven
   CMP #$01
   BNE continue_to_load
   LDA pc_score
@@ -995,10 +986,82 @@
   ADC #$01 ; PC Score + 1
   STA pc_score
   LDA #$00
-  STA was_eleven_used
+  STA pc_used_eleven
 
   continue_to_load:
   JSR load_pc_score_sprites
+
+  RTS
+.endproc
+
+.proc add_player_score
+
+  LDA card_rank
+
+  CMP #$0C 
+  BNE less_than_10  ; if rank != A, then check
+
+  LDA player_score
+  CMP #$0B
+  BCS add_A_1 ; if score >= 11, then add 1 to score
+  ; else, add 11.
+  LDA player_score
+  CLC
+  ADC #$0B
+  STA player_score
+
+  LDA #$01 ; Set player_used_eleven to 01
+  STA player_used_eleven
+  JMP continue
+
+  add_A_1: ; If score >= 11, then A = 1
+    LDA player_score
+    CLC
+    ADC #$01
+    STA player_score
+    JMP continue
+  
+  less_than_10: ;  Add the cards from (2 to 10)
+    LDA card_rank
+    CMP #$09
+    BCS more_than_10
+
+    LDA player_score
+    CLC
+    ADC #$02
+    STA player_score
+    
+    LDA player_score
+    CLC
+    ADC card_rank
+    STA player_score
+    JMP continue
+
+  more_than_10: ; Call when card suit is J,Q,K and adds 10 to pc score.
+    LDA player_score
+    CLC
+    ADC #$0A
+    STA player_score
+
+  continue: 
+
+  LDA player_score ; Check if Score > 21, and then if a 11 was used, subtracts 11 and add 1 to score.
+  CMP #$16 
+  BCC continue_to_load
+  LDA player_used_eleven
+  CMP #$01
+  BNE continue_to_load
+  LDA player_score
+  SEC
+  SBC #$0B ; PC score - 11
+  CLC
+  ADC #$01 ; PC Score + 1
+  STA player_score
+  LDA #$00
+  STA player_used_eleven
+
+  continue_to_load:
+  JSR load_player_score_sprites
 
   RTS
 .endproc
@@ -1079,14 +1142,21 @@
 
   ; Temp for Arithmethic Operations
   A_temp: .res 1
+  B_temp: .res 1
 
   ; Temp to keep track of when the A with 11 was used
-  was_eleven_used: .res 1
+  pc_used_eleven: .res 1
+  player_used_eleven: .res 1
+
+  ; Game State
+  game_state: .res 1
 
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
 
 .segment "RODATA"
+  cards_test: 
+    .byte $0C, $0A, $01
   digits:
     .byte $1F, $16, $17, $18, $19, $1A, $1B, $1C, $1D, $1E
   palettes:
