@@ -118,6 +118,23 @@
     AND #BTN_A
     BEQ check_B
 
+    LDA game_state
+    CMP #$00
+    BEQ second_state
+    JMP check_second_state
+
+    second_state:
+    
+    LDX game_state
+    INX
+    STX game_state
+
+    check_second_state:
+
+    LDA game_state
+    CMP #$01
+    BNE done_A
+
     ; Set MAX cards for players
     LDA dealer_counter_cards
     CMP #$0C
@@ -160,16 +177,14 @@
       STA dealer_y
 
     dealer_continue: 
-      ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-      ; LDA card_color
-      ; EOR #%00000001
-      ; STA card_color
-
       ; Increment dealers counter cards
       LDX dealer_counter_cards
       INX
       STX dealer_counter_cards
-    JMP change_card_info
+      JMP change_card_info
+    
+    done_A:
+
   check_B:
     LDA pad1
     CMP prev_controls
@@ -220,11 +235,6 @@
       STA player_y
 
     player_continue: 
-      ; ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-      ; LDA card_color
-      ; EOR #%00000001
-      ; STA card_color
-
       ; Increment player counter cards
       LDX player_counter_cards
       INX
@@ -240,13 +250,17 @@
     AND #BTN_UP
     BEQ check_DOWN
 
+    LDA game_state
+    CMP #$00
+    BNE done_up
+
     ; JSR add_cash
     ; JSR load_cash_sprites
 
     JSR add_bid
     JSR load_bid_sprites
 
-
+    done_up:
     JMP done_checking
   
   check_DOWN:
@@ -258,12 +272,17 @@
     AND #BTN_DOWN
     BEQ done_checking
 
+    LDA game_state
+    CMP #$00
+    BNE done_down
+
     ; JSR sbc_cash
     ; JSR load_cash_sprites
 
     JSR sbc_bid
     JSR load_bid_sprites
 
+    done_down:
     JMP done_checking
 
   ; Change the card's suit and number after input
@@ -1148,7 +1167,7 @@
   pc_used_eleven: .res 1
   player_used_eleven: .res 1
 
-  ; Game State
+  ; Game State (00 Select Bid, 01 Player's turn, 02 Dealer's turn)
   game_state: .res 1
 
 
