@@ -1636,7 +1636,7 @@
 
 .segment "RODATA"
   cards_test: 
-    .byte $0C, $0B, $0B, $05, $0B
+    .byte $0C, $01, $0B, $05, $05, $01, $07, $04
   digits:
     .byte $1F, $16, $17, $18, $19, $1A, $1B, $1C, $1D, $1E
   palettes:
