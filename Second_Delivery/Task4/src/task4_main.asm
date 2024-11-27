@@ -70,8 +70,8 @@
   JSR load_pc_score_sprites
   JSR load_player_score_sprites
 
-  LDA #$05
-  STA rank_counter
+  ; LDA #$05
+  ; STA rank_counter
 
   LDA #$00
   STA prev_controls
@@ -113,43 +113,52 @@
   BNE stop_index
 
   check_index:
-  LDA initial_hand_index
-  CMP #$03
-  BCS stop_index
+    LDA initial_hand_index
+    CMP #$03
+    BCS stop_index
 
   first_call:
-  LDA initial_hand_index
-  CMP #$00
-  BNE second_call
+    LDA initial_hand_index
+    CMP #$00
+    BNE second_call
 
-  JSR generate_player_card
-  JSR change_card_info
-  JMP done
+    JSR change_card_info
+    JSR generate_player_card
+
+    JMP done
 
   second_call:
-  LDA initial_hand_index
-  CMP #$01
-  BNE third_call
+    LDA initial_hand_index
+    CMP #$01
+    BNE third_call
 
-  JSR generate_player_card
-  JSR change_card_info
-  JMP done
+    JSR change_card_info
+    JSR generate_player_card
+
+    JMP done
 
   third_call:
-  LDA initial_hand_index
-  CMP #$02
-  BNE reset
+    LDA initial_hand_index
+    CMP #$02
+    BNE reset
 
-  JSR generate_dealer_card
-  JSR change_card_info
-  JMP done
+    JSR change_card_info
+    JSR generate_dealer_card
 
   reset:
     LDA #$00
     STA initial_hand_state
     STA initial_hand_index
-    JMP stop_index
 
+    ; If player black jack
+    LDA player_score
+    CMP #$15
+    BNE stop_index
+    
+    LDA #$01
+    STA is_black_jack
+
+    JMP stop_index
   done:
     LDX initial_hand_index
     INX
@@ -180,8 +189,6 @@
 
   JSR generate_dealer_card
   JSR change_card_info
-      
-  JSR check_dealer_win
 
   add_to_counter:
     LDX pc_auto_counter
@@ -194,6 +201,8 @@
     LDA #$00
     STA is_pc_auto
     STA pc_auto_counter
+    
+    JSR check_dealer_win
   
   done:
 
@@ -238,18 +247,16 @@
       LDX #$01
       STX initial_hand_state
 
-      LDA player_score
-      CMP #$15
-      BNE done_A
-      LDA #$01
-      STA is_black_jack
-
       JMP done_A
 
     A_check_second_state:
     LDA game_state
     CMP #$01
     BNE A_check_third_state
+
+    LDA player_score
+    CMP #$15
+    BEQ A_check_third_state
 
     ; Set MAX cards for players
     LDA player_counter_cards
@@ -649,6 +656,16 @@
 .proc change_card_info
   ; Change the card's suit and number after input
   change_card_info:
+
+    ; LDX rank_counter
+    ; INX
+    ; STX rank_counter
+    LDX A_temp
+    LDA cards_test, x
+    STA rank_counter
+    INX
+    STX A_temp
+
     LDX suit_counter
     INX
     STX suit_counter
@@ -661,9 +678,6 @@
     reg_was_4:
       LDA #$00
       STA suit_counter
-      LDX rank_counter
-      INX
-      STX rank_counter
     
   done_checking:
   RTS
@@ -1011,6 +1025,7 @@
   RTS
 .endproc
 
+; Add bid money into cash
 .proc add_cash
     ; Add cash and bid first digit
     LDA cash_first_digit
@@ -1067,6 +1082,7 @@
     RTS        
 .endproc
 
+; Substract money from cash
 .proc sbc_cash
     ; Subtract bid from cash (first digit)
     LDA cash_first_digit
@@ -1286,7 +1302,7 @@
   CMP #$15
   BEQ continue_checking
   BCS if_player_won
-
+  
   continue_checking:
 
   LDA pc_score
@@ -1375,6 +1391,7 @@
   RTS
 .endproc
 
+; When Player's cash is 999, player wins
 .proc load_W_sprite
   LDA cash_first_digit
   CMP #$09
@@ -1404,6 +1421,7 @@
   RTS
 .endproc
 
+; When Player cash reserve is 0, it's game over.
 .proc load_L_sprite
   LDA cash_first_digit
   BNE done
@@ -1618,7 +1636,7 @@
 
 .segment "RODATA"
   cards_test: 
-    .byte $0C, $0A, $01
+    .byte $0C, $0B, $0B, $05, $0B
   digits:
     .byte $1F, $16, $17, $18, $19, $1A, $1B, $1C, $1D, $1E
   palettes:
