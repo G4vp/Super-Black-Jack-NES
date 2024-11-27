@@ -26,7 +26,11 @@
   JSR read_controller1
   JSR update_hands
 
+  ; Generate first 3 round cards.
   JSR initial_hands
+
+  ; Generate Dealers Cards
+  JSR pc_auto_generator
 
   LDA #$00
   STA PPUSCROLL
@@ -155,6 +159,47 @@
   RTS
 .endproc
 
+; Dealers Auto Card Generator
+.proc pc_auto_generator
+
+  LDA is_pc_auto
+  CMP #$01
+  BNE done
+
+  LDA pc_score
+  CMP #$12
+  BCS stop_generator
+
+  ; Set how long the delay for each card is going to take.
+  LDA pc_auto_counter
+  CMP #$20
+  BNE add_to_counter
+
+  LDA #$00
+  STA pc_auto_counter
+
+  JSR generate_dealer_card
+  JSR change_card_info
+      
+  JSR check_dealer_win
+
+  add_to_counter:
+    LDX pc_auto_counter
+    INX
+    STX pc_auto_counter
+
+  JMP done
+
+  stop_generator:
+    LDA #$00
+    STA is_pc_auto
+    STA pc_auto_counter
+  
+  done:
+
+  RTS
+.endproc
+
 .proc update_hands
 
   LDA pad1
@@ -251,10 +296,10 @@
       CMP #$0C ; 12
       BEQ check_UP
 
-      JSR generate_dealer_card
-      JSR change_card_info
-      
-      JSR check_dealer_win
+      ; Activate Card Generator
+      LDA #$01
+      STA is_pc_auto
+
       JMP done_B
 
     ; Check if round finished
@@ -1477,6 +1522,10 @@
 
   initial_hand_state: .res 1
   initial_hand_index: .res 1
+
+  ; Dealers Auto Generator
+  is_pc_auto: .res 1
+  pc_auto_counter: .res 1
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit, cash_second_digit
 
