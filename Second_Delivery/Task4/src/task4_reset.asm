@@ -59,6 +59,28 @@ set_numbers:
   LDA #$02
   STA cash_second_digit
 
+set_seed:
+  LDA PPUSTATUS
+  STA seed
+  
+  LDA CONTROLLER1
+  EOR seed
+  STA seed
+
+  LDA counter
+  EOR seed
+  sta seed
+
+  LDA seed
+  ASL
+  ROL seed+1
+  LDA CONTROLLER1
+  EOR seed+1
+  STA seed+1
+
+  LDA seed
+  EOR seed+1
+  STA seed
 
 vblankwait2:
   BIT PPUSTATUS
@@ -72,4 +94,4 @@ vblankwait2:
 .endproc
 
 .segment "ZEROPAGE"
-.importzp card_color, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit,cash_second_digit
+.importzp card_color, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit,cash_second_digit, seed, counter

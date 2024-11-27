@@ -9,6 +9,8 @@
 .import read_controller1
 .import reset_handler
 
+.include "./task3_galois16.asm"
+
 .proc nmi_handler
   ; save registers
   PHA
@@ -21,6 +23,16 @@
   STA OAMADDR
   LDA #$02
   STA OAMDMA
+
+  INC counter ; TODO : Se esta guardando el valor de counter? No veo un sta so no se si esto es lo que quieres.
+
+  LDA PPUSTATUS
+  EOR seed
+  STA seed
+
+  LDA counter
+  EOR seed+1
+  STA seed+1
 
   ; read controller
   JSR read_controller1
@@ -187,8 +199,8 @@
   LDA #$00
   STA pc_auto_counter
 
-  JSR generate_dealer_card
   JSR change_card_info
+  JSR generate_dealer_card
 
   add_to_counter:
     LDX pc_auto_counter
@@ -263,8 +275,8 @@
     CMP #$0E
     BEQ check_B
 
-    JSR generate_player_card
     JSR change_card_info
+    JSR generate_player_card
 
     ; Check if player won
     JSR check_player_win
@@ -564,8 +576,7 @@
 .endproc
 
 .proc generate_dealer_card
-     ; Set arguments for cards.
-    
+    ; Set arguments for cards.
     LDA rank_counter
     STA card_rank
     LDA suit_counter
@@ -592,7 +603,7 @@
     ; If the horizontal line reaches its maximum, then draw on the next line.
     LDA dealer_counter_cards ;if dealer_counter_cards > 5
     CMP #$05
-    BEQ  dealer_next_line
+    BEQ dealer_next_line
     JMP dealer_continue
 
     dealer_next_line:
@@ -602,6 +613,10 @@
       STA dealer_y
 
     dealer_continue: 
+      ; Change card_color from 00 to 01. Change card_color from 01 to 00.
+      LDA card_color
+      EOR #%00000001
+      STA card_color
       ; Increment dealers counter cards
       LDX dealer_counter_cards
       INX
@@ -610,6 +625,12 @@
 .endproc
 
 .proc generate_player_card
+
+    ; ===================
+
+
+    ; ===================
+
     ; Set arguments for cards.
     LDA rank_counter    
     STA card_rank
@@ -646,6 +667,11 @@
       STA player_y
 
     player_continue: 
+
+      ; Change card_color from 00 to 01. Change card_color from 01 to 00.
+      LDA card_color
+      EOR #%00000001
+      STA card_color
       ; Increment player counter cards
       LDX player_counter_cards
       INX
@@ -655,33 +681,89 @@
 
 .proc change_card_info
   ; Change the card's suit and number after input
-  change_card_info:
+  ; change_card_info:
 
-    ; LDX rank_counter
-    ; INX
-    ; STX rank_counter
-    LDX A_temp
-    LDA cards_test, x
-    STA rank_counter
-    INX
-    STX A_temp
+  ;   ; LDX rank_counter
+  ;   ; INX
+  ;   ; STX rank_counter
+  ;   LDX A_temp
+  ;   LDA cards_test, x
 
-    LDX suit_counter
-    INX
-    STX suit_counter
-    LDA suit_counter
-    CMP #$04
-    BEQ reg_was_4
-    JMP done_checking
+  ;   STA rank_counter
+  ;   INX
+  ;   STX A_temp
 
-    ; After all suits for a number were shown, we change the rank and reset the suit counter.
-    reg_was_4:
-      LDA #$00
+  ;   LDX suit_counter
+  ;   INX
+  ;   STX suit_counter
+  ;   LDA suit_counter
+  ;   CMP #$04
+  ;   BEQ reg_was_4
+  ;   JMP done_checking
+
+  ;   ; After all suits for a number were shown, we change the rank and reset the suit counter.
+  ;   reg_was_4:
+  ;     LDA #$00
+  ;     STA suit_counter
+    
+  ; done_checking:
+    ; LDA PPUSTATUS
+    ; EOR seed
+    ; STA seed
+    ; INC seed
+    card_randomizer:
+      jsr card_52
+      and #%00001111
+
+      check_range:
+        cmp #13
+        bcc rank_done
+        sbc #1
+        jmp check_range
+
+      rank_done:
+      ; clc   ; carry flag, needed to perform add with carry
+      ; adc #5
+        sta rank_counter
+      
+      ;random suit
+      JSR card_52
+      and #%00000011 
+      clc
+      adc #0
       STA suit_counter
     
-  done_checking:
+    ; JSR get_index_card
+
+    ; LDA map_cards, x
+    ; CMP #$01
+    ; BEQ card_randomizer
+
+    ; LDA #$00
+    ; STA map_cards, x
+
   RTS
 .endproc
+
+.proc get_index_card
+  LDA suit_counter
+  CLC
+  ADC suit_counter ; 2
+  CLC
+  ADC suit_counter ; 3
+  CLC
+  ADC suit_counter ; 4
+  CLC 
+  ADC suit_counter ; 5
+  CLC
+  ADC suit_counter ; 6
+  CLC 
+  ADC suit_counter ; 7
+  CLC
+
+  RTS
+.endproc
+
 ; ========= BACKGROUND LOGIC ============
 .proc load_background_graphics
 
@@ -1632,13 +1714,28 @@
   ; check if black jack happened
   is_black_jack: .res 1
 
-.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit, cash_second_digit
+  ; Randomizer
+  seed: .res 2
+  counter: .res 1
+  suit_i: .res 1
+  rank_i: .res 1
+  selected_suit: .res 1
+  selected_rank: .res 1
+  map_cards: .res 52
+
+.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit, cash_second_digit, seed, counter
 
 .segment "RODATA"
   cards_test: 
     .byte $0C, $01, $0B, $05, $05, $01, $07, $04
+
   digits:
     .byte $1F, $16, $17, $18, $19, $1A, $1B, $1C, $1D, $1E
+  suit_table:
+    .byte $12, $13, $14, $15
+  rank_table:
+    .byte $05, $06, $07, $08, $09, $0A, $0B, $0C, $0D, $0E, $0F, $10, $11
+
   palettes:
     .byte $19, $0f, $21, $32
     .byte $19, $0f, $21, $32
