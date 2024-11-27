@@ -54,6 +54,11 @@ set_numbers:
     STA rank_counter
     STA suit_counter
 
+  LDA #$00
+  STA cash_first_digit
+  LDA #$02
+  STA cash_second_digit
+
 
 vblankwait2:
   BIT PPUSTATUS
@@ -67,4 +72,4 @@ vblankwait2:
 .endproc
 
 .segment "ZEROPAGE"
-.importzp card_color, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
+.importzp card_color, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit,cash_second_digit

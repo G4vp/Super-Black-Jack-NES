@@ -61,10 +61,6 @@
   JSR load_bid_sprites
 
   ; Set Initial Cash to $20
-  LDA #$00
-  STA cash_first_digit
-  LDA #$02
-  STA cash_second_digit
   JSR load_cash_sprites
 
   JSR load_pc_score_sprites
@@ -102,25 +98,6 @@
   forever:
     JMP forever
 .endproc
-
-; .proc wait_vblank
-;   wait_vblank_loop:
-;       BIT $2002         ; Read PPU status
-;       BPL wait_vblank_loop ; Loop until VBlank flag is set (bit 7 = 1)
-;       RTS               ; Return from subroutine
-; .endproc
-
-; .proc delay
-;     LDX #$FF
-; delay_outer:
-;     LDY #$FF
-; delay_inner:
-;         DEY
-;         BNE delay_inner
-;     DEX
-;     BNE delay_outer
-;     RTS
-; .endproc
 
 ; Update Game State
 .proc initial_hands
@@ -197,12 +174,6 @@
     JMP A_check_second_state
 
     A_second_state: ; Spawn 1 dealer card, 2 players cards and set STATE to 01
-      ; JSR generate_player_card
-      ; JSR change_card_info
-
-      ; JSR generate_dealer_card
-      ; JSR change_card_info
-
       LDX game_state
       INX
       STX game_state
@@ -215,7 +186,7 @@
     A_check_second_state:
     LDA game_state
     CMP #$01
-    BNE done_A
+    BNE A_check_third_state
 
     ; Set MAX cards for players
     LDA player_counter_cards
@@ -224,6 +195,17 @@
 
     JSR generate_player_card
     JSR change_card_info
+
+    ; Check if player won
+    JSR check_player_win
+
+    A_check_third_state:
+      LDA game_state
+      CMP #$03
+      BCC done_A
+
+      JSR reset_game
+      
     
     done_A:
 
@@ -249,8 +231,17 @@
     B_check_second_state:
       LDA game_state
       CMP #$01
+      BNE B_check_third_state
+
+      LDX game_state
+      INX
+      STX game_state
+
+    B_check_third_state:
+      LDA game_state
+      CMP #$02
       BNE done_B
-      
+
     ; Set MAX cards for dealer
     LDA dealer_counter_cards
     CMP #$0C ; 12
@@ -258,6 +249,8 @@
 
     JSR generate_dealer_card
     JSR change_card_info
+    
+    JSR check_dealer_win
     
     done_B:
 
@@ -557,7 +550,7 @@
     LDA player_y
     STA card_y
 
-    JSR draw_card
+    ; JSR draw_card
       
     ; Set X to the next position.
     LDA player_x
@@ -1198,6 +1191,174 @@
   RTS
 .endproc
 
+; ========== CHECK FOR WIN OR LOSE ================
+.proc check_player_win
+  LDA player_score
+  CMP #$15
+  BEQ done_checking
+  BCS if_player_lost
+  JMP done_checking
+
+  if_player_lost:
+    LDA #$04
+    STA game_state
+    JSR player_lost
+    JMP done_checking
+  
+  done_checking:
+
+  RTS
+.endproc
+
+.proc check_dealer_win
+  LDA pc_score
+  CMP #$11
+  BCC done_checking
+
+  LDA pc_score
+  CMP player_score
+  BEQ if_is_draw
+  BCS if_player_lost
+  JMP if_player_won
+
+  if_player_won:
+    JSR player_won
+    JMP done_checking
+
+  if_player_lost:
+    JSR player_lost
+    JMP done_checking
+  
+  if_is_draw:
+    JSR player_draw
+
+  
+  done_checking:
+
+  RTS
+.endproc
+
+.proc player_won
+  LDA #$03
+  STA game_state
+
+  JSR add_cash
+  JSR load_cash_sprites
+
+  RTS
+.endproc
+
+.proc player_lost
+  LDA #$04
+  STA game_state
+
+  JSR sbc_cash
+  JSR load_cash_sprites
+  
+  RTS
+.endproc
+
+.proc player_draw
+  LDA #$05
+  STA game_state
+  RTS
+.endproc
+
+.proc reset_game
+
+  set_counters:
+    LDA #$00
+    STA dealer_counter_cards
+    STA player_counter_cards
+
+    ; We start sprite_counter at 6 because the first 24 bytes are reserved for the numbers.
+    LDA #$0A
+    STA sprite_counter
+
+  set_card_coords:
+    LDA #$3E
+    STA dealer_x
+    LDA #$20
+    STA dealer_y
+
+    LDA #$26
+    STA player_x
+    LDA #$90
+    STA player_y
+
+  set_numbers:
+      LDA #$00
+      STA rank_counter
+      STA suit_counter
+
+  ; Reset BID
+  LDA #$00
+  STA bid_first_digit
+  STA bid_second_digit
+  STA bid_third_digit
+  JSR load_bid_sprites
+
+  ; Reset Scores
+  LDA #$00
+  STA player_score
+  STA pc_score
+  JSR load_player_score_sprites
+  JSR load_pc_score_sprites
+
+  ; Reset States
+  LDA #$00
+  STA game_state
+
+  STA player_used_eleven
+  STA pc_used_eleven
+
+  STA initial_hand_state
+  STA initial_hand_index
+
+
+  ; LDX PPUSTATUS
+  ; LDX #$3f
+  ; STX PPUADDR
+  ; LDX #$00
+  ; STX PPUADDR
+  ; load_palettes:
+  ;   LDA palettes,X
+  ;   STA PPUDATA
+  ;   INX
+  ;   CPX #$20
+  ;   BNE load_palettes   
+
+  ; ; Load Graphics
+  ; JSR load_background_graphics
+
+  ; load_attribute_table:
+  ;   LDA PPUSTATUS
+  ;   LDA #$23
+  ;   STA PPUADDR
+  ;   LDA #$c2
+  ;   STA PPUADDR
+  ;   LDA #%11111111
+  ;   STA PPUDATA
+
+  ;   LDA PPUSTATUS
+  ;   LDA #$23
+  ;   STA PPUADDR
+  ;   LDA #$e0
+  ;   STA PPUADDR
+  ;   LDA #%11111111
+  ;   STA PPUDATA
+
+  ; vblankwait:       ; wait for another vblank before continuing
+  ;   BIT PPUSTATUS
+  ;   BPL vblankwait
+
+  ;   LDA #%10010000  ; turn on NMIs, sprites use first pattern table
+  ;   STA PPUCTRL
+  ;   LDA #%00011110  ; turn on screen
+  ;   STA PPUMASK
+  RTS
+.endproc 
+
 .segment "VECTORS"
 .addr nmi_handler, reset_handler, irq_handler
 
@@ -1286,7 +1447,7 @@
   initial_hand_state: .res 1
   initial_hand_index: .res 1
 
-.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter
+.exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit, cash_second_digit
 
 .segment "RODATA"
   cards_test: 
