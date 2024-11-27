@@ -66,6 +66,9 @@
   JSR load_pc_score_sprites
   JSR load_player_score_sprites
 
+  LDA #$06
+  STA rank_counter
+
   LDA #$00
   STA prev_controls
   
@@ -168,6 +171,15 @@
     AND #BTN_A
     BEQ check_B
 
+    LDA bid_first_digit
+    BNE first_state
+    LDA bid_second_digit
+    BNE first_state
+    LDA bid_third_digit
+    BNE first_state
+    JMP done_A
+
+    first_state:
     LDA game_state
     CMP #$00
     BEQ A_second_state
@@ -198,12 +210,12 @@
 
     ; Check if player won
     JSR check_player_win
+    JMP done_A
 
     A_check_third_state:
       LDA game_state
       CMP #$03
       BCC done_A
-
       JSR reset_game
       
     
@@ -218,6 +230,7 @@
     AND #BTN_B
     BEQ check_UP
 
+    ; Move from State 1 to State 2
     B_check_second_state:
       LDA game_state
       CMP #$01
@@ -227,20 +240,30 @@
       INX
       STX game_state
 
+    ; State When The Dealers Cards Are Generated
     B_check_third_state:
       LDA game_state
       CMP #$02
-      BNE done_B
+      BNE B_check_four_state
 
-    ; Set MAX cards for dealer
-    LDA dealer_counter_cards
-    CMP #$0C ; 12
-    BEQ check_UP
+      ; Set MAX cards for dealer
+      LDA dealer_counter_cards
+      CMP #$0C ; 12
+      BEQ check_UP
 
-    JSR generate_dealer_card
-    JSR change_card_info
-    
-    JSR check_dealer_win
+      JSR generate_dealer_card
+      JSR change_card_info
+      
+      JSR check_dealer_win
+      JMP done_B
+
+    ; Check if round finished
+    B_check_four_state:
+      LDA game_state
+      CMP #$03
+      BCC done_B
+      JSR reset_game
+      
     
     done_B:
 
@@ -1202,6 +1225,13 @@
 
 .proc check_dealer_win
   LDA pc_score
+  CMP #$15
+  BEQ continue_checking
+  BCS if_player_won
+
+  continue_checking:
+
+  LDA pc_score
   CMP #$11
   BCC done_checking
 
@@ -1220,7 +1250,7 @@
     JMP done_checking
   
   if_is_draw:
-    JSR player_draw
+    JSR player_tie
 
   
   done_checking:
@@ -1235,6 +1265,13 @@
   JSR add_cash
   JSR load_cash_sprites
 
+  ; Reset BID
+  LDA #$00
+  STA bid_first_digit
+  STA bid_second_digit
+  STA bid_third_digit
+  JSR load_bid_sprites
+
   RTS
 .endproc
 
@@ -1244,13 +1281,28 @@
 
   JSR sbc_cash
   JSR load_cash_sprites
+
+  ; Reset BID
+  LDA #$00
+  STA bid_first_digit
+  STA bid_second_digit
+  STA bid_third_digit
+  JSR load_bid_sprites
   
   RTS
 .endproc
 
-.proc player_draw
+.proc player_tie
   LDA #$05
   STA game_state
+
+  ; Reset BID
+  LDA #$00
+  STA bid_first_digit
+  STA bid_second_digit
+  STA bid_third_digit
+  JSR load_bid_sprites
+
   RTS
 .endproc
 
