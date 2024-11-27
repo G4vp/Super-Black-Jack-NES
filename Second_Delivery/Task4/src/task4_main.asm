@@ -311,6 +311,10 @@
     ; Check if round finished
     B_check_four_state:
       LDA game_state
+      CMP #$06
+      BCS done_B
+
+      LDA game_state
       CMP #$03
       BCC done_B
       JSR reset_game
@@ -1346,7 +1350,9 @@
   STA bid_second_digit
   STA bid_third_digit
   JSR load_bid_sprites
-  
+
+  JSR load_L_sprite
+
   RTS
 .endproc
 
@@ -1361,6 +1367,32 @@
   STA bid_third_digit
   JSR load_bid_sprites
 
+  RTS
+.endproc
+
+.proc load_L_sprite
+  LDA cash_first_digit
+  BNE done
+
+  LDA cash_second_digit
+  BNE done
+
+  LDA cash_third_digit
+  BNE done
+
+  LDA #$06
+  STA game_state
+
+  LDA #$6E
+  STA $0228
+  LDA #$21
+  STA $0229
+  LDA #$00
+  STA $022A
+  LDA #$75
+  STA $022B
+
+  done:
   RTS
 .endproc
 
@@ -1397,7 +1429,7 @@
     STA player_counter_cards
 
     ; We start sprite_counter at 6 because the first 24 bytes are reserved for the numbers.
-    LDA #$0A
+    LDA #$0B
     STA sprite_counter
 
   set_card_coords:
