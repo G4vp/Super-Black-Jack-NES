@@ -218,16 +218,6 @@
     AND #BTN_B
     BEQ check_UP
 
-    ; LDA game_state
-    ; CMP #$00
-    ; BEQ B_second_state
-    ; JMP B_check_second_state
-
-    ; B_second_state:
-    ;   LDX game_state
-    ;   INX
-    ;   STX game_state
-
     B_check_second_state:
       LDA game_state
       CMP #$01
@@ -550,7 +540,7 @@
     LDA player_y
     STA card_y
 
-    ; JSR draw_card
+    JSR draw_card
       
     ; Set X to the next position.
     LDA player_x
@@ -1266,6 +1256,31 @@
 
 .proc reset_game
 
+  SEI
+  CLD
+  LDX #$40
+  STX $4017
+  LDX #$FF
+  TXS
+  INX
+  STX PPUCTRL
+  STX PPUMASK
+  STX $4010
+  BIT PPUSTATUS
+  vblankwait:
+    BIT PPUSTATUS
+    BPL vblankwait
+
+  LDX #$00
+  LDA #$ff
+  clear_oam:
+    STA $0218,X ; set sprite y-positions off the screen
+    INX
+    INX
+    INX
+    INX
+    BNE clear_oam
+
   set_counters:
     LDA #$00
     STA dealer_counter_cards
@@ -1296,14 +1311,11 @@
   STA bid_first_digit
   STA bid_second_digit
   STA bid_third_digit
-  JSR load_bid_sprites
 
   ; Reset Scores
   LDA #$00
   STA player_score
   STA pc_score
-  JSR load_player_score_sprites
-  JSR load_pc_score_sprites
 
   ; Reset States
   LDA #$00
@@ -1315,48 +1327,15 @@
   STA initial_hand_state
   STA initial_hand_index
 
+  vblankwait2:
+    BIT PPUSTATUS
+    BPL vblankwait2
 
-  ; LDX PPUSTATUS
-  ; LDX #$3f
-  ; STX PPUADDR
-  ; LDX #$00
-  ; STX PPUADDR
-  ; load_palettes:
-  ;   LDA palettes,X
-  ;   STA PPUDATA
-  ;   INX
-  ;   CPX #$20
-  ;   BNE load_palettes   
 
-  ; ; Load Graphics
-  ; JSR load_background_graphics
+    LDA #%01
+    STA card_color
 
-  ; load_attribute_table:
-  ;   LDA PPUSTATUS
-  ;   LDA #$23
-  ;   STA PPUADDR
-  ;   LDA #$c2
-  ;   STA PPUADDR
-  ;   LDA #%11111111
-  ;   STA PPUDATA
-
-  ;   LDA PPUSTATUS
-  ;   LDA #$23
-  ;   STA PPUADDR
-  ;   LDA #$e0
-  ;   STA PPUADDR
-  ;   LDA #%11111111
-  ;   STA PPUDATA
-
-  ; vblankwait:       ; wait for another vblank before continuing
-  ;   BIT PPUSTATUS
-  ;   BPL vblankwait
-
-  ;   LDA #%10010000  ; turn on NMIs, sprites use first pattern table
-  ;   STA PPUCTRL
-  ;   LDA #%00011110  ; turn on screen
-  ;   STA PPUMASK
-  RTS
+    JMP main
 .endproc 
 
 .segment "VECTORS"
