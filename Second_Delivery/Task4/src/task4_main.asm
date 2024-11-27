@@ -70,7 +70,7 @@
   JSR load_pc_score_sprites
   JSR load_player_score_sprites
 
-  LDA #$06
+  LDA #$00
   STA rank_counter
 
   LDA #$00
@@ -231,12 +231,18 @@
     JMP A_check_second_state
 
     A_second_state: ; Spawn 1 dealer card, 2 players cards and set STATE to 01
-      LDX game_state
-      INX
+
+      LDX #$01
       STX game_state
 
       LDX #$01
       STX initial_hand_state
+
+      LDA player_score
+      CMP #$15
+      BNE done_A
+      LDA #$01
+      STA is_black_jack
 
       JMP done_A
 
@@ -1308,6 +1314,13 @@
   STA game_state
 
   JSR add_cash
+
+  LDA is_black_jack ; If a black jack happened, player wins 2x bid
+  CMP #$01
+  BNE continue
+  JSR add_cash
+
+  continue:
   JSR load_cash_sprites
 
   ; Reset BID
@@ -1424,6 +1437,11 @@
   STA initial_hand_state
   STA initial_hand_index
 
+  STA is_pc_auto
+  STA pc_auto_counter
+
+  STA is_black_jack
+
   vblankwait2:
     BIT PPUSTATUS
     BPL vblankwait2
@@ -1526,6 +1544,9 @@
   ; Dealers Auto Generator
   is_pc_auto: .res 1
   pc_auto_counter: .res 1
+
+  ; check if black jack happened
+  is_black_jack: .res 1
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit, cash_second_digit
 
