@@ -70,7 +70,7 @@
   JSR load_pc_score_sprites
   JSR load_player_score_sprites
 
-  LDA #$00
+  LDA #$05
   STA rank_counter
 
   LDA #$00
@@ -1054,8 +1054,11 @@
     ADC bid_third_digit
     CMP #$0A        
     BCC no_carry_third_digit ; If result < 10, no carry
-    SBC #$0A        
+    LDA #$09        
     STA cash_third_digit
+    STA cash_second_digit
+    STA cash_first_digit
+
     JMP done
 
   no_carry_third_digit:
@@ -1334,6 +1337,8 @@
   STA bid_third_digit
   JSR load_bid_sprites
 
+  JSR load_W_sprite
+
   RTS
 .endproc
 
@@ -1367,6 +1372,35 @@
   STA bid_third_digit
   JSR load_bid_sprites
 
+  RTS
+.endproc
+
+.proc load_W_sprite
+  LDA cash_first_digit
+  CMP #$09
+  BNE done
+
+  LDA cash_second_digit
+  CMP #$09
+  BNE done
+
+  LDA cash_third_digit
+  CMP #$09
+  BNE done
+
+  LDA #$06
+  STA game_state
+
+  LDA #$6E
+  STA $0228
+  LDA #$20
+  STA $0229
+  LDA #$00
+  STA $022A
+  LDA #$75
+  STA $022B
+
+  done:
   RTS
 .endproc
 
