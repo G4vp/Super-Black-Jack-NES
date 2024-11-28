@@ -39,6 +39,19 @@
   JSR read_controller1
   JSR update_hands
 
+  ; LDA wait_to_draw
+  ; CMP #$01
+  ; BNE continue_bk_card
+  ; WaitForVBlank:
+  ;     LDA $2002
+  ;     AND #%10000000
+  ;     BEQ WaitForVBlank
+  ; JSR draw_background_card
+  ; LDA #$00
+  ; STA wait_to_draw
+
+  ; continue_bk_card:
+
   LDA #$00
   STA PPUSCROLL
   STA PPUSCROLL
@@ -112,6 +125,18 @@
   ; Draw card: display a card on the screen with its sprites and background.
   ; Receives X, Y, card_color (00 or 01), Card Rank (number), and Card Suit (symbol).
 .proc draw_card
+
+  LDA card_set
+  CMP #$02
+  BCC set_color_first_pallete
+  LDA #$01
+  STA card_color
+  JMP continue
+  set_color_first_pallete:
+    LDA #$00
+    STA card_color
+  continue:
+
   LDA card_x
   STA offset_x
 
@@ -202,7 +227,11 @@
     LSR
     ORA low_byte
     STA low_byte
-    JSR draw_background_card
+
+
+    ; LDA #$01
+    ; STA wait_to_draw
+    jsr draw_background_card
 
   ; return to where the subroutine was called
   RTS
@@ -309,35 +338,7 @@
     CMP #$0C
     BEQ check_B
 
-    ; ;random rank
-    ; jsr card_52
-    ; and #%00011111
-    ; clc
-    ; ADC #0
-    ; sta rank_counter
-    ;random rank
-
-    jsr card_52
-    and #%00001111
-
-    check_rangeA:
-      cmp #13
-      bcc rank_doneA
-      sbc #1
-      jmp check_rangeA
-
-    rank_doneA:
-      ; clc   ; carry flag, needed to perform add with carry
-      ; adc #5
-      sta rank_counter
-    
-    ; ;random suit
-    jsr card_52
-    and #%00000011
-    clc
-    adc #0
-    sta suit_counter
-    
+    jsr generate_cards
 
     ;Set arguments for cards.
     LDA rank_counter    
@@ -373,19 +374,16 @@
 
     dealer_continue: 
       ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-      LDA card_color
-      EOR #%00000001
-      STA card_color
+      ; LDA card_color
+      ; EOR #%00000001
+      ; STA card_color
 
       ; Increment dealers counter cards
       LDX dealer_counter_cards
       INX
       STX dealer_counter_cards
     JMP change_card_info
-  
-  ; inc_seed_hi:
-  ;   INC seed+1
-  ;   RTS
+
 
   check_B:
     LDA pad1
@@ -398,38 +396,13 @@
     AND #BTN_B
     BEQ check_UP
 
-    LDA PPUSTATUS
-    EOR seed
-    STA seed
-    INC seed
-
 
     ; Set MAX cards for players
     LDA player_counter_cards
     CMP #$0E ; 14
     BEQ check_UP
-
-    ;random rank
-    jsr card_52
-    and #%00001111
-
-    check_range:
-      cmp #13
-      bcc rank_done
-      sbc #1
-      jmp check_range
-
-    rank_done:
-    ; clc   ; carry flag, needed to perform add with carry
-    ; adc #0
-      sta rank_counter
-
-    ;random suit
-    JSR card_52
-    and #%00000011 
-    clc
-    adc #0
-    STA suit_counter
+    
+    jsr generate_cards
 
     ;Set arguments for cards.
     LDA rank_counter    
@@ -467,9 +440,9 @@
     player_continue: 
     
       ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-      LDA card_color
-      EOR #%00000001
-      STA card_color
+      ; LDA card_color
+      ; EOR #%00000001
+      ; STA card_color
 
       ; Increment player counter cards
       LDX player_counter_cards
@@ -527,6 +500,96 @@
     STA prev_controls
 
   RTS
+.endproc
+
+;(suit*13) +rank
+.proc calculate_card_index
+  ; Input: A = rank (0–12), X = suit (0–3)
+  ; Output: X = unique index (0–51)
+  ; Modifies: A, Y
+  LDA suit_counter
+  CLC
+  ADC suit_counter ; 2
+  CLC
+  ADC suit_counter ; 3
+  CLC
+  ADC suit_counter ; 4
+  CLC 
+  ADC suit_counter ; 5
+  CLC
+  ADC suit_counter ; 6
+  CLC 
+  ADC suit_counter ; 7
+  CLC
+  ADC suit_counter ; 8
+  CLC 
+  ADC suit_counter ; 9
+  CLC 
+  ADC suit_counter ; 10
+  CLC 
+  ADC suit_counter ; 11
+  CLC
+  ADC suit_counter ; 12
+  CLC 
+  ADC suit_counter ; 13
+
+  CLC 
+  ADC rank_counter
+  
+  SEC
+  SBC #$01
+
+  STA index
+
+  RTS
+
+.endproc
+
+.proc generate_cards
+  generate_cardA:
+      ; LDA PPUSTATUS
+      ; EOR seed
+      ; STA seed
+      ; INC seed
+      ; STA seed
+
+      jsr card_52
+      and #%00001111
+      ;tax
+
+      check_rangeA:
+        cmp #13
+        bcc rank_doneA
+        sbc #1
+        jmp check_rangeA
+
+      rank_doneA:
+        sta rank_counter
+
+      ; ;random suit
+      jsr card_52
+      and #%00000011
+      ;tax
+      ; clc
+      ; adc #0
+      sta suit_counter
+
+  JSR calculate_card_index
+  ; jsr mark_card_used
+  ldx index
+  
+  LDA index
+  CMP #$34
+  BCS generate_cardA
+  
+  LDA deck_cards, x
+  cmp #$01
+  beq generate_cardA
+
+  LDA #$01             ; Load the "used" marker (value = 1)
+  STA deck_cards, X    ; Store it in the deck_cards array at the calculated index
+
+  rts
 .endproc
 
 .proc load_background_graphics
@@ -730,20 +793,6 @@
   RTS
 .endproc
 
-; .proc random_card
-;   ; Randomize rank
-;   jsr card_52
-;   and #%00001111          ; Mask to get a value between 0–12
-;   cmp #13                 ; Ensure it's within bounds
-;   bcs retry_rank
-;   tax
-;   lda rank_table, x
-;   sta card_rank
-
-; retry_rank:
-;   jsr random 
-  
-; .endproc
 
 .segment "VECTORS"
 .addr nmi_handler, reset_handler, irq_handler
@@ -794,10 +843,12 @@
   ; Randomizer
   seed: .res 2
   counter: .res 1
-  suit_i: .res 1
-  rank_i: .res 1
-  selected_suit: .res 1
-  selected_rank: .res 1
+  deck_cards: .res 52
+  temp_A: .res 1
+  temp_B: .res 1
+  index: .res 1
+
+  wait_to_draw: .res 1
 
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter, seed, counter
