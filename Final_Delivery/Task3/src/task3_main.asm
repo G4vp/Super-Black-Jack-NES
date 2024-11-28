@@ -304,9 +304,9 @@
     STA seed
     INC seed
   
-    ; Set MAX cards for players
+    ; Set MAX cards 
     LDA dealer_counter_cards
-    CMP #$0C
+    CMP #$0A
     BEQ check_B
 
     ; ;random rank
@@ -406,7 +406,7 @@
 
     ; Set MAX cards for players
     LDA player_counter_cards
-    CMP #$0E ; 14
+    CMP #$0A 
     BEQ check_UP
 
     ;random rank
