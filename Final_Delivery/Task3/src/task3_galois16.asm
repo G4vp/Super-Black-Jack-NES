@@ -46,6 +46,8 @@
 ; different set of taps.
 ;
 ; @see https://github.com/bbbradsmith/prng_6502
+
+
 .proc galois16o
   lda seed+1
 	tay
