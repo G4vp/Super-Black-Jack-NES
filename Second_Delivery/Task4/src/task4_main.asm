@@ -44,6 +44,19 @@
   ; Generate Dealers Cards
   JSR pc_auto_generator
 
+  LDA wait_to_draw_dealer
+  CMP #$01
+  BNE continue_bk_card
+  WaitForVBlank:
+    LDA $2002      ; Read PPU status
+    AND #%10000000 ; Mask out everything except bit 7 (vblank flag)
+    BEQ WaitForVBlank ; Loop until bit 7 is set
+  JSR draw_background_card
+  LDA #$00
+  STA wait_to_draw_dealer
+  continue_bk_card:
+
+
   LDA #$00
   STA PPUSCROLL
   STA PPUSCROLL
@@ -496,7 +509,18 @@
     LSR
     ORA low_byte
     STA low_byte
+
+    LDA initial_hand_state
+    CMP #$01
+    BNE card_spawned_by_button
     JSR draw_background_card
+    JMP done
+
+    card_spawned_by_button:
+      LDA #$01
+      sta wait_to_draw_dealer
+
+    done:
 
   ; return to where the subroutine was called
   RTS
@@ -613,10 +637,6 @@
       STA dealer_y
 
     dealer_continue: 
-      ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-      LDA card_color
-      EOR #%00000001
-      STA card_color
       ; Increment dealers counter cards
       LDX dealer_counter_cards
       INX
@@ -624,12 +644,12 @@
   RTS
 .endproc
 
+.proc draw_dealer_hand
+
+  RTS
+.endproc
+
 .proc generate_player_card
-
-    ; ===================
-
-
-    ; ===================
 
     ; Set arguments for cards.
     LDA rank_counter    
@@ -667,11 +687,6 @@
       STA player_y
 
     player_continue: 
-
-      ; Change card_color from 00 to 01. Change card_color from 01 to 00.
-      LDA card_color
-      EOR #%00000001
-      STA card_color
       ; Increment player counter cards
       LDX player_counter_cards
       INX
@@ -680,37 +695,7 @@
 .endproc
 
 .proc change_card_info
-  ; Change the card's suit and number after input
-  ; change_card_info:
 
-  ;   ; LDX rank_counter
-  ;   ; INX
-  ;   ; STX rank_counter
-  ;   LDX A_temp
-  ;   LDA cards_test, x
-
-  ;   STA rank_counter
-  ;   INX
-  ;   STX A_temp
-
-  ;   LDX suit_counter
-  ;   INX
-  ;   STX suit_counter
-  ;   LDA suit_counter
-  ;   CMP #$04
-  ;   BEQ reg_was_4
-  ;   JMP done_checking
-
-  ;   ; After all suits for a number were shown, we change the rank and reset the suit counter.
-  ;   reg_was_4:
-  ;     LDA #$00
-  ;     STA suit_counter
-    
-  ; done_checking:
-    ; LDA PPUSTATUS
-    ; EOR seed
-    ; STA seed
-    ; INC seed
     card_randomizer:
       jsr card_52
       and #%00001111
@@ -722,8 +707,6 @@
         jmp check_range
 
       rank_done:
-      ; clc   ; carry flag, needed to perform add with carry
-      ; adc #5
         sta rank_counter
       
       ;random suit
@@ -733,14 +716,20 @@
       adc #0
       STA suit_counter
     
-    ; JSR get_index_card
+    JSR get_index_card
+    LDX card_index
 
-    ; LDA map_cards, x
-    ; CMP #$01
-    ; BEQ card_randomizer
+    LDA card_index
+    CMP #$34
+    BCS card_randomizer
 
-    ; LDA #$00
-    ; STA map_cards, x
+    LDA map_cards, x
+    CMP #$01
+    BEQ card_randomizer
+
+
+    LDA #$01
+    STA map_cards, x
 
   RTS
 .endproc
@@ -760,6 +749,40 @@
   CLC 
   ADC suit_counter ; 7
   CLC
+  ADC suit_counter ; 8
+  CLC 
+  ADC suit_counter ; 9
+  CLC 
+  ADC suit_counter ; 10
+  CLC 
+  ADC suit_counter ; 11
+  CLC
+  ADC suit_counter ; 12
+  CLC 
+  ADC suit_counter ; 13
+
+  CLC 
+  ADC rank_counter
+  
+  SEC
+  SBC #$01
+
+  STA card_index
+
+  RTS
+.endproc
+
+.proc clear_deck
+  LDX #$00
+  loop:
+    LDA #$00
+    STA map_cards, x
+    
+    INX
+    
+    TXA
+    CMP #$34
+    BCC loop
 
   RTS
 .endproc
@@ -1410,6 +1433,7 @@
 
   
   done_checking:
+  JSR clear_deck
 
   RTS
 .endproc
@@ -1722,6 +1746,12 @@
   selected_suit: .res 1
   selected_rank: .res 1
   map_cards: .res 52
+  card_index: .res 1
+
+  ; Flag to draw background in next frame
+  wait_to_draw_dealer: .res 1
+  wait_dealer_high: .res 1
+  wait_dealer_low: .res 1
 
 .exportzp card_color, pad1, player_x, player_y, dealer_x, dealer_y, sprite_counter, player_counter_cards, dealer_counter_cards, rank_counter, suit_counter,cash_first_digit, cash_second_digit, seed, counter
 
